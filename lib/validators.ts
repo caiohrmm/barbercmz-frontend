@@ -71,7 +71,9 @@ export type CreateServiceInput = z.infer<typeof createServiceSchema>;
 
 // Update schemas
 export const updateBarberSchema = createBarberSchema.partial();
-export const updateServiceSchema = createServiceSchema.partial();
+export const updateServiceSchema = createServiceSchema
+  .partial()
+  .extend({ active: z.boolean().optional() });
 
 export const updateAppointmentStatusSchema = z.object({
   status: z.enum(['scheduled', 'completed', 'cancelled', 'no_show']),

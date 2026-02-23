@@ -51,25 +51,27 @@ export default function ServicesPage() {
 
   const services = data?.services ?? [];
 
+  type ServiceFormValues = CreateServiceInput & { active?: boolean };
+
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateServiceInput>({
+  } = useForm<ServiceFormValues>({
     resolver: zodResolver(createServiceSchema),
-    defaultValues: { name: '', duration: 30, price: 0 },
+    defaultValues: { name: '', duration: 30, price: 0, active: true },
   });
 
   const openCreate = () => {
     setEditingService(null);
-    reset({ name: '', duration: 30, price: 0 });
+    reset({ name: '', duration: 30, price: 0, active: true });
     setShowForm(true);
   };
 
   const openEdit = (s: Service) => {
     setEditingService(s);
-    reset({ name: s.name, duration: s.duration, price: s.price });
+    reset({ name: s.name, duration: s.duration, price: s.price, active: s.active });
     setShowForm(true);
   };
 
@@ -114,13 +116,15 @@ export default function ServicesPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     if (editingService) {
+      const { active, ...rest } = values;
       await updateMutation.mutateAsync({
         id: editingService.id,
-        input: values,
+        input: { ...rest, ...(typeof active === 'boolean' ? { active } : {}) },
         closeOnSuccess: true,
       });
     } else {
-      await createMutation.mutateAsync(values);
+      const { name, duration, price } = values;
+      await createMutation.mutateAsync({ name, duration, price });
     }
   });
 
@@ -351,6 +355,18 @@ export default function ServicesPage() {
                       )}
                     </div>
                   </div>
+                  {editingService && (
+                    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3">
+                      <input
+                        {...register('active')}
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                      />
+                      <span className="text-sm font-medium text-zinc-700">
+                        Serviço ativo (aparece na página de agendamento)
+                      </span>
+                    </label>
+                  )}
                   <div className="flex gap-3 pt-2">
                     <button
                       type="button"
