@@ -63,6 +63,8 @@ export interface Customer {
   updatedAt: string;
 }
 
+export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+
 export interface Appointment {
   id: string;
   barbershopId: string;
@@ -71,9 +73,12 @@ export interface Appointment {
   customerId: string;
   startTime: string;
   endTime: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  status: AppointmentStatus;
   createdAt: string;
   updatedAt: string;
+  barber?: { id: string; name: string };
+  service?: { id: string; name: string; duration: number; price: number };
+  customer?: { id: string; name: string; phone: string };
 }
 
 export interface ApiError {
