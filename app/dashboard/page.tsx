@@ -37,7 +37,8 @@ export default function DashboardPage() {
       }),
   });
 
-  const todayCount = todayData?.appointments?.length ?? 0;
+  const todayCount =
+    todayData?.appointments?.filter((a) => a.status === 'scheduled').length ?? 0;
 
   const listItems =
     user?.role === 'owner'
