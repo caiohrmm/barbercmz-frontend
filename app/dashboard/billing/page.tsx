@@ -78,6 +78,9 @@ export default function BillingPage() {
     <div className="px-4 pb-24 pt-6 sm:px-6 sm:pb-8">
       <h1 className="text-xl font-semibold text-zinc-900 sm:text-2xl">Faturamento</h1>
       <p className="mt-1 text-sm text-zinc-500">Plano, limite de barbeiros e equipe.</p>
+      <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        Todos os planos incluem 30 dias grátis para demonstração do sistema.
+      </p>
 
       {/* Plano atual */}
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">

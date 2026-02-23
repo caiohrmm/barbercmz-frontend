@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Transition } from '@headlessui/react';
+import Link from 'next/link';
 import {
   EnvelopeIcon,
   LockClosedIcon,
@@ -199,14 +200,21 @@ export default function LoginPage() {
             </form>
           </div>
 
-          {/* Footer link */}
+          {/* Footer links */}
           <p className="mt-8 text-center text-sm text-zinc-500">
-            <a
-              href="/"
+            <Link
+              href={ROUTES.PLANOS}
+              className="text-amber-400 underline decoration-amber-600 underline-offset-2 transition hover:text-amber-300 hover:decoration-amber-500"
+            >
+              Ver planos e 30 dias grátis
+            </Link>
+            <span className="mx-2 text-zinc-600">·</span>
+            <Link
+              href={ROUTES.HOME}
               className="text-zinc-400 underline decoration-zinc-600 underline-offset-2 transition hover:text-zinc-300 hover:decoration-zinc-500"
             >
               Voltar ao início
-            </a>
+            </Link>
           </p>
         </div>
       </main>

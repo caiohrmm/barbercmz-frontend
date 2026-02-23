@@ -44,6 +44,9 @@ export default function BillingPlanPage() {
       <p className="mt-1 text-sm text-zinc-500">
         Escolha um plano para definir quantos barbeiros podem ser cadastrados.
       </p>
+      <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        30 dias grátis em qualquer plano para demonstrar o sistema.
+      </p>
 
       {isLoading ? (
         <div className="mt-6 flex justify-center py-12">
