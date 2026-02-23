@@ -42,7 +42,9 @@ export function DashboardHeader({ title, showBack, backHref = '/dashboard' }: Da
   const resolvedTitle = title ?? getPageTitle(pathname);
   const showBackButton = showBack ?? !isHome;
 
-  const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '?';
+  const nameChar = user?.name?.trim().charAt(0);
+  const emailChar = user?.email?.trim().charAt(0);
+  const initial = (nameChar || emailChar || '?').toUpperCase();
 
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[padding:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
@@ -68,10 +70,12 @@ export function DashboardHeader({ title, showBack, backHref = '/dashboard' }: Da
 
         <Menu as="div" className="relative shrink-0">
           <MenuButton
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-lg font-semibold text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-amber-400 bg-amber-500 text-lg font-semibold leading-none text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
             aria-label="Abrir menu da conta"
           >
-            {initial}
+            <span className="flex h-full w-full select-none items-center justify-center text-[1rem]" aria-hidden>
+              {initial}
+            </span>
           </MenuButton>
           <Transition
             enter="transition duration-100 ease-out"
