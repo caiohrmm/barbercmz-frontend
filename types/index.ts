@@ -17,6 +17,7 @@ export interface Barbershop {
   id: string;
   name: string;
   slug: string;
+  logoUrl?: string;
   planId?: string;
   maxBarbers: number;
   active: boolean;

@@ -196,13 +196,23 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
           <header className="border-b border-zinc-200 bg-white px-4 py-6">
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-zinc-100">
-                <Image
-                  src="/logo.svg"
-                  alt=""
-                  width={64}
-                  height={64}
-                  className="object-contain p-2"
-                />
+                {barbershop.logoUrl ? (
+                  <Image
+                    src={barbershop.logoUrl}
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="object-cover size-full"
+                  />
+                ) : (
+                  <Image
+                    src="/logo.svg"
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="object-contain p-2"
+                  />
+                )}
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-zinc-900">
