@@ -5,18 +5,21 @@ import { usePathname } from 'next/navigation';
 import {
   CalendarDaysIcon,
   HomeIcon,
-  Squares2X2Icon,
+  UserGroupIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import {
   CalendarDaysIcon as CalendarDaysIconSolid,
   HomeIcon as HomeIconSolid,
-  Squares2X2Icon as Squares2X2IconSolid,
+  UserGroupIcon as UserGroupIconSolid,
+  Cog6ToothIcon as Cog6ToothIconSolid,
 } from '@heroicons/react/24/solid';
 
 const navItems = [
   { href: '/dashboard', label: 'Início', icon: HomeIcon, iconActive: HomeIconSolid },
   { href: '/dashboard/agenda', label: 'Agenda', icon: CalendarDaysIcon, iconActive: CalendarDaysIconSolid },
-  { href: '/dashboard/menu', label: 'Menu', icon: Squares2X2Icon, iconActive: Squares2X2IconSolid },
+  { href: '/dashboard/clients', label: 'Clientes', icon: UserGroupIcon, iconActive: UserGroupIconSolid },
+  { href: '/dashboard/settings', label: 'Configurações', icon: Cog6ToothIcon, iconActive: Cog6ToothIconSolid },
 ] as const;
 
 export function DashboardNav() {
@@ -35,9 +38,7 @@ export function DashboardNav() {
               key={href}
               href={href}
               className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-3 px-2 text-center transition ${
-                isActive
-                  ? 'text-amber-600'
-                  : 'text-zinc-500 hover:text-zinc-700'
+                isActive ? 'text-amber-600' : 'text-zinc-500 hover:text-zinc-700'
               }`}
               aria-current={isActive ? 'page' : undefined}
             >

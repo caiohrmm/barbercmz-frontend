@@ -2,18 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Transition } from '@headlessui/react';
 import {
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Transition,
-} from '@headlessui/react';
-import {
-  BanknotesIcon,
+  ChevronLeftIcon,
   ClockIcon,
   UserCircleIcon,
   PhoneIcon,
@@ -188,42 +182,104 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     return false;
   };
 
+  const steps = [
+    { key: 0, label: 'Serviço' },
+    { key: 1, label: 'Data' },
+    { key: 2, label: 'Horário' },
+    { key: 3, label: 'Dados' },
+  ];
+
   return (
-    <div className="min-h-[100dvh] bg-zinc-50">
+    <div className="min-h-[100dvh] bg-white">
       <div className="px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
         <div className="mx-auto max-w-lg">
-          {/* Header */}
-          <header className="border-b border-zinc-200 bg-white px-4 py-6">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-zinc-100">
-                {barbershop.logoUrl ? (
-                  <Image
-                    src={barbershop.logoUrl}
-                    alt=""
-                    width={64}
-                    height={64}
-                    className="object-cover size-full"
-                  />
-                ) : (
-                  <Image
-                    src="/logo.svg"
-                    alt=""
-                    width={64}
-                    height={64}
-                    className="object-contain p-2"
-                  />
-                )}
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-zinc-900">
-                  {barbershop.name}
-                </h1>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Agendamento em 4 etapas
-                </p>
+          {/* Header: voltar + nome centralizado */}
+          <header className="flex h-14 items-center justify-between gap-3 border-b border-zinc-100 py-3 sm:h-16">
+            <Link
+              href="/"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-amber-600 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              aria-label="Voltar"
+            >
+              <ChevronLeftIcon className="h-6 w-6" aria-hidden />
+            </Link>
+            <h1 className="min-w-0 flex-1 truncate text-center text-lg font-semibold text-zinc-900">
+              {barbershop.name}
+            </h1>
+            <div className="w-10 shrink-0" />
+          </header>
+
+          {/* Logo + indicador de etapas */}
+          <div className="flex items-start gap-4 border-b border-zinc-100 py-4">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-amber-100 ring-2 ring-amber-200">
+              {barbershop.logoUrl ? (
+                <Image
+                  src={barbershop.logoUrl}
+                  alt=""
+                  width={56}
+                  height={56}
+                  className="object-cover size-full"
+                />
+              ) : (
+                <Image
+                  src="/logo.svg"
+                  alt=""
+                  width={56}
+                  height={56}
+                  className="object-contain p-2"
+                />
+              )}
+            </div>
+            <div className="min-w-0 flex-1 pt-1">
+              <div className="flex items-center justify-between gap-0">
+                {steps.map(({ key }, i) => {
+                  const isCurrent = selectedTabIndex === key;
+                  const isComplete = stepComplete[key];
+                  const canGo = canGoToStep(key);
+                  return (
+                    <div key={key} className="flex flex-1 items-center">
+                      <button
+                        type="button"
+                        onClick={() => canGo && setSelectedTabIndex(key)}
+                        disabled={!canGo}
+                        className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 rounded"
+                        aria-current={isCurrent ? 'step' : undefined}
+                        aria-label={`Etapa ${key + 1}: ${steps[key].label}`}
+                      >
+                        <span
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                            isComplete
+                              ? 'border-amber-500 bg-amber-500 text-white'
+                              : isCurrent
+                                ? 'border-amber-500 bg-amber-500 text-white'
+                                : 'border-zinc-200 bg-white'
+                          }`}
+                        >
+                          {isComplete ? (
+                            <CheckIcon className="h-4 w-4" aria-hidden />
+                          ) : null}
+                        </span>
+                        <span
+                          className={`text-[10px] font-medium ${
+                            isCurrent || isComplete ? 'text-amber-600' : 'text-zinc-400'
+                          }`}
+                        >
+                          {steps[key].label}
+                        </span>
+                      </button>
+                      {i < steps.length - 1 && (
+                        <div
+                          className={`mx-0.5 h-0.5 min-w-[6px] flex-1 rounded ${
+                            stepComplete[key] ? 'bg-amber-300' : 'bg-zinc-200'
+                          }`}
+                          aria-hidden
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </header>
+          </div>
 
           {submitSuccess && lastBookingSummary ? (
             /* Sucesso - fora das tabs */
@@ -284,35 +340,12 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
               </div>
             </Transition>
           ) : (
-            <TabGroup
-              selectedIndex={selectedTabIndex}
-              onChange={setSelectedTabIndex}
-              className="py-6"
-            >
-              <TabList className="flex gap-1 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
-                {[
-                  { label: 'Serviço', step: 0, icon: ScissorsIcon },
-                  { label: 'Data', step: 1, icon: CalendarDaysIcon },
-                  { label: 'Horário', step: 2, icon: ClockIcon },
-                  { label: 'Dados', step: 3, icon: UserCircleIcon },
-                ].map(({ label, step, icon: Icon }) => (
-                  <Tab
-                    key={step}
-                    disabled={!canGoToStep(step)}
-                    className="flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[selected]:border-amber-500 data-[selected]:bg-amber-50 data-[selected]:text-amber-900 data-[focus]:outline-none data-[focus]:ring-2 data-[focus]:ring-amber-500"
-                  >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    {label}
-                    {stepComplete[step] && <CheckIcon className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />}
-                  </Tab>
-                ))}
-              </TabList>
-
-              <TabPanels className="mt-4">
-                {/* Etapa 1: Serviço */}
-                <TabPanel className="focus:outline-none">
+            <div className="py-4">
+              {/* Etapa 1: Serviço */}
+              {selectedTabIndex === 0 && (
+                <>
                   <section aria-labelledby="service-heading">
-                    <h2 id="service-heading" className="mb-3 text-sm font-medium text-zinc-700">
+                    <h2 id="service-heading" className="mb-3 text-base font-medium text-zinc-800">
                       1. Serviço
                     </h2>
               {services.length === 0 ? (
@@ -328,7 +361,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                   </p>
                 </div>
               ) : (
-                <ul className="grid gap-3 sm:grid-cols-2" role="list">
+                <ul className="grid gap-3" role="list">
                   {services.map((service) => {
                     const isSelected = selectedService?.id === service.id;
                     return (
@@ -338,24 +371,39 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                           onClick={() => setSelectedService(service)}
                           aria-pressed={isSelected}
                           aria-label={`${service.name}, ${formatDuration(service.duration)}, ${formatPrice(service.price)}`}
-                          className={`flex w-full flex-col items-start rounded-2xl border p-4 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                          className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
                             isSelected
-                              ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/20'
+                              ? 'border-amber-400 bg-amber-50/80'
                               : 'border-zinc-200 bg-white hover:border-amber-200 hover:bg-zinc-50'
                           }`}
                         >
-                          <div className="flex w-full items-start justify-between gap-2">
-                            <span className="font-medium text-zinc-900">{service.name}</span>
-                            {isSelected && (
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
-                                <CheckIcon className="h-4 w-4" aria-hidden />
-                              </span>
-                            )}
+                          <span
+                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
+                              isSelected ? 'bg-amber-200/80 text-amber-800' : 'bg-zinc-100 text-zinc-500'
+                            }`}
+                          >
+                            <ScissorsIcon className="h-6 w-6" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-medium ${isSelected ? 'text-zinc-900' : 'text-zinc-800'}`}>
+                              {service.name}
+                            </p>
+                            <p className="mt-0.5 text-sm text-zinc-500">{formatDuration(service.duration)}</p>
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-zinc-500">
-                            <span>{formatDuration(service.duration)}</span>
-                            <span className="font-medium text-amber-700">{formatPrice(service.price)}</span>
-                          </div>
+                          <span
+                            className={`shrink-0 font-semibold tabular-nums ${
+                              isSelected ? 'text-amber-600' : 'text-zinc-600'
+                            }`}
+                          >
+                            {formatPrice(service.price)}
+                          </span>
+                          <span
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                              isSelected ? 'bg-amber-500 text-white' : 'border-2 border-zinc-300'
+                            }`}
+                          >
+                            {isSelected && <CheckIcon className="h-4 w-4" aria-hidden />}
+                          </span>
                         </button>
                       </li>
                     );
@@ -367,17 +415,19 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
               <button
                 type="button"
                 onClick={() => setSelectedTabIndex(1)}
-                className="mt-4 w-full rounded-xl bg-amber-500 py-3 font-medium text-zinc-950 shadow-lg shadow-amber-500/25 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+                className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
               >
-                Próximo: Data
+                Continuar
               </button>
             )}
-                  </TabPanel>
+                </>
+              )}
 
-                {/* Etapa 2: Data */}
-                <TabPanel className="focus:outline-none">
+              {/* Etapa 2: Data */}
+              {selectedTabIndex === 1 && (
+                <>
                   <section aria-labelledby="date-heading">
-                    <h2 id="date-heading" className="mb-3 text-sm font-medium text-zinc-700">
+                    <h2 id="date-heading" className="mb-3 text-base font-medium text-zinc-800">
                       2. Data
                     </h2>
                     <label htmlFor="booking-date" className="sr-only">
@@ -408,17 +458,19 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
               <button
                 type="button"
                 onClick={() => setSelectedTabIndex(2)}
-                className="mt-4 w-full rounded-xl bg-amber-500 py-3 font-medium text-zinc-950 shadow-lg shadow-amber-500/25 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+                className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
               >
-                Próximo: Horário
+                Continuar
               </button>
             )}
-                  </TabPanel>
+                </>
+              )}
 
-                {/* Etapa 3: Horário */}
-                <TabPanel className="focus:outline-none">
+              {/* Etapa 3: Horário */}
+              {selectedTabIndex === 2 && (
+                <>
                   <section aria-labelledby="time-heading">
-                    <h2 id="time-heading" className="mb-3 text-sm font-medium text-zinc-700">
+                    <h2 id="time-heading" className="mb-3 text-base font-medium text-zinc-800">
                       3. Horário
                     </h2>
               {!selectedService || !selectedDate ? (
@@ -500,19 +552,21 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
               <button
                 type="button"
                 onClick={() => setSelectedTabIndex(3)}
-                className="mt-4 w-full rounded-xl bg-amber-500 py-3 font-medium text-zinc-950 shadow-lg shadow-amber-500/25 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+                className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
               >
-                Próximo: Seus dados
+                Continuar
               </button>
             )}
-                  </TabPanel>
+                </>
+              )}
 
-                {/* Etapa 4: Seus dados */}
-                <TabPanel className="focus:outline-none">
+              {/* Etapa 4: Dados */}
+              {selectedTabIndex === 3 && (
+                <>
                   {selectedService && selectedDate && selectedSlot ? (
               <section aria-labelledby="customer-heading">
-                <h2 id="customer-heading" className="mb-3 text-sm font-medium text-zinc-700">
-                  4. Seus dados
+                <h2 id="customer-heading" className="mb-3 text-base font-medium text-zinc-800">
+                  4. Dados
                 </h2>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <p className="mb-4 text-sm text-zinc-600">
@@ -592,7 +646,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-3.5 px-4 font-medium text-zinc-950 shadow-lg shadow-amber-500/25 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-70"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 px-4 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-70"
                     >
                       {isSubmitting ? (
                         <>
@@ -613,9 +667,9 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                       <p className="mt-1 text-sm text-zinc-500">Serviço, data e horário para preencher seus dados.</p>
                     </div>
                   )}
-                  </TabPanel>
-              </TabPanels>
-            </TabGroup>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>

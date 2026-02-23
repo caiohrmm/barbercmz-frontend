@@ -9,7 +9,7 @@ import {
   MenuItems,
   Transition,
 } from '@headlessui/react';
-import { ChevronLeftIcon, UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/lib/providers/auth-provider';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -42,6 +42,8 @@ export function DashboardHeader({ title, showBack, backHref = '/dashboard' }: Da
   const resolvedTitle = title ?? getPageTitle(pathname);
   const showBackButton = showBack ?? !isHome;
 
+  const initial = user?.name?.trim().charAt(0).toUpperCase() ?? '?';
+
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[padding:env(safe-area-inset-top)]:pt-[env(safe-area-inset-top)]">
       <div className="flex h-14 items-center justify-between gap-3 px-4 sm:h-16 sm:px-6">
@@ -59,15 +61,17 @@ export function DashboardHeader({ title, showBack, backHref = '/dashboard' }: Da
             </>
           ) : (
             <span className="text-lg font-semibold tracking-tight text-zinc-900 sm:text-xl">
-              BarberCMZ
+              {!isHome ? 'BarberCMZ' : ''}
             </span>
           )}
         </div>
 
         <Menu as="div" className="relative shrink-0">
-          <MenuButton className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
-            <UserCircleIcon className="h-5 w-5 text-zinc-500" aria-hidden />
-            <span className="max-w-[8rem] truncate sm:max-w-[12rem]">{user?.name ?? 'Conta'}</span>
+          <MenuButton
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-lg font-semibold text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            aria-label="Abrir menu da conta"
+          >
+            {initial}
           </MenuButton>
           <Transition
             enter="transition duration-100 ease-out"
@@ -84,7 +88,9 @@ export function DashboardHeader({ title, showBack, backHref = '/dashboard' }: Da
               <div className="border-b border-zinc-100 px-3 py-2">
                 <p className="truncate text-sm font-medium text-zinc-900">{user?.name}</p>
                 <p className="truncate text-xs text-zinc-500">{user?.email}</p>
-                <p className="mt-0.5 text-xs text-amber-600 capitalize">{user?.role === 'owner' ? 'Proprietário' : 'Barbeiro'}</p>
+                <p className="mt-0.5 text-xs text-amber-600 capitalize">
+                  {user?.role === 'owner' ? 'Proprietário' : 'Barbeiro'}
+                </p>
               </div>
               <Link href="/dashboard/settings">
                 <MenuItem>
