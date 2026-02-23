@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Transition } from '@headlessui/react';
 import {
-  ChevronLeftIcon,
   ClockIcon,
   UserCircleIcon,
   PhoneIcon,
@@ -193,19 +191,11 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     <div className="min-h-[100dvh] bg-white">
       <div className="px-4 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
         <div className="mx-auto max-w-lg">
-          {/* Header: voltar + nome centralizado */}
-          <header className="flex h-14 items-center justify-between gap-3 border-b border-zinc-100 py-3 sm:h-16">
-            <Link
-              href="/"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-amber-600 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              aria-label="Voltar"
-            >
-              <ChevronLeftIcon className="h-6 w-6" aria-hidden />
-            </Link>
-            <h1 className="min-w-0 flex-1 truncate text-center text-lg font-semibold text-zinc-900">
+          {/* Header: nome centralizado */}
+          <header className="flex h-14 items-center justify-center border-b border-zinc-100 py-3 sm:h-16">
+            <h1 className="min-w-0 truncate text-center text-lg font-semibold text-zinc-900">
               {barbershop.name}
             </h1>
-            <div className="w-10 shrink-0" />
           </header>
 
           {/* Logo + indicador de etapas */}
