@@ -39,3 +39,32 @@ export async function getPublicServices(
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
 }
+
+export interface AvailableSlot {
+  time: string;
+  barberId: string;
+  barberName: string;
+}
+
+export interface AvailableSlotsResponse {
+  slots: AvailableSlot[];
+}
+
+/**
+ * Fetch available time slots for a date and service (public).
+ * date: YYYY-MM-DD
+ */
+export async function getAvailableSlots(
+  barbershopId: string,
+  date: string,
+  serviceId: string
+): Promise<AvailableSlotsResponse> {
+  const baseUrl = getBaseUrl();
+  const params = new URLSearchParams({ date, serviceId });
+  const res = await fetch(
+    `${baseUrl}/barbershops/${barbershopId}/available-slots?${params}`,
+    { cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
