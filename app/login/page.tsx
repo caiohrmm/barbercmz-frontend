@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,11 +60,16 @@ export default function LoginPage() {
       >
         <div className="mx-auto w-full max-w-[22rem] sm:max-w-md">
           {/* Header */}
-          <header className="mb-10 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              BarberCMZ
-            </h1>
-            <p className="mt-2 text-sm text-zinc-400">
+          <header className="mb-10 flex flex-col items-center text-center">
+            <Image
+              src="/logo.svg"
+              alt="BarberCMZ"
+              width={120}
+              height={48}
+              priority
+              className="h-12 w-auto object-contain"
+            />
+            <p className="mt-4 text-sm text-zinc-400">
               Entre na sua conta para continuar
             </p>
           </header>
