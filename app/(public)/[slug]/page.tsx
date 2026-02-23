@@ -14,11 +14,12 @@ function AppointmentPageContent({ slug }: { slug: string }) {
   );
 }
 
-export default function AppointmentPage({
+export default async function AppointmentPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
   return (
     <Suspense
       fallback={
@@ -27,7 +28,7 @@ export default function AppointmentPage({
         </div>
       }
     >
-      <AppointmentPageContent slug={params.slug} />
+      <AppointmentPageContent slug={slug} />
     </Suspense>
   );
 }
