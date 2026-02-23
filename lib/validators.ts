@@ -46,12 +46,51 @@ export const bookingCustomerSchema = z.object({
 export type BookingCustomerInput = z.infer<typeof bookingCustomerSchema>;
 
 // Barber validators
-export const workingHoursSchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  startTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Formato inválido (HH:mm)'),
-  endTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Formato inválido (HH:mm)'),
-  isAvailable: z.boolean().default(true),
-});
+const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+export const workingHoursSchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    startTime: z.string().regex(timeRegex, 'Formato inválido (HH:mm)'),
+    endTime: z.string().regex(timeRegex, 'Formato inválido (HH:mm)'),
+    lunchStartTime: z
+      .union([z.string().regex(timeRegex, 'Formato inválido (HH:mm)'), z.literal('')])
+      .optional(),
+    lunchEndTime: z
+      .union([z.string().regex(timeRegex, 'Formato inválido (HH:mm)'), z.literal('')])
+      .optional(),
+    isAvailable: z.boolean().default(true),
+  })
+  .refine(
+    (data) => {
+      const startMin = timeToMinutes(data.startTime);
+      const endMin = timeToMinutes(data.endTime);
+      return endMin > startMin;
+    },
+    { message: 'Fim deve ser depois do início', path: ['endTime'] }
+  )
+  .refine(
+    (data) => {
+      const hasStart = data.lunchStartTime != null && data.lunchStartTime !== '';
+      const hasEnd = data.lunchEndTime != null && data.lunchEndTime !== '';
+      if (!hasStart && !hasEnd) return true;
+      if (hasStart !== hasEnd) return false;
+      const startMin = timeToMinutes(data.startTime);
+      const endMin = timeToMinutes(data.endTime);
+      const lunchStart = timeToMinutes(data.lunchStartTime!);
+      const lunchEnd = timeToMinutes(data.lunchEndTime!);
+      return lunchEnd > lunchStart && lunchStart >= startMin && lunchEnd <= endMin;
+    },
+    {
+      message: 'Almoço: informe início e fim; deve estar dentro do expediente',
+      path: ['lunchEndTime'],
+    }
+  );
 
 export const createBarberSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
@@ -59,6 +98,19 @@ export const createBarberSchema = z.object({
 });
 
 export type CreateBarberInput = z.infer<typeof createBarberSchema>;
+
+/** Tipo do formulário de barbeiro (workingHours sempre definido, para useForm) */
+export type BarberFormValues = {
+  name: string;
+  workingHours: Array<{
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    lunchStartTime?: string;
+    lunchEndTime?: string;
+    isAvailable: boolean;
+  }>;
+};
 
 // Service validators
 export const createServiceSchema = z.object({

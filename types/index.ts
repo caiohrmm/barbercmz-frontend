@@ -50,6 +50,9 @@ export interface WorkingHours {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /** Optional lunch break (barber unavailable in this interval) */
+  lunchStartTime?: string;
+  lunchEndTime?: string;
   isAvailable: boolean;
 }
 

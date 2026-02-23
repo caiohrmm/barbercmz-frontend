@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
@@ -19,12 +19,74 @@ import {
   ArrowPathIcon,
   NoSymbolIcon,
   CheckCircleIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { getBarbers, createBarber, updateBarber } from '@/lib/barbers';
 import { getBarbershopById } from '@/lib/barbershop';
 import { useAuth } from '@/lib/providers/auth-provider';
-import type { Barber } from '@/types';
-import { createBarberSchema, type CreateBarberInput } from '@/lib/validators';
+import type { Barber, WorkingHours } from '@/types';
+import { createBarberSchema, type CreateBarberInput, type BarberFormValues } from '@/lib/validators';
+
+const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+function defaultWorkingHours(): BarberFormValues['workingHours'] {
+  return [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+    dayOfWeek,
+    startTime: '09:00',
+    endTime: '18:00',
+    lunchStartTime: '',
+    lunchEndTime: '',
+    isAvailable: dayOfWeek >= 1 && dayOfWeek <= 5,
+  }));
+}
+
+function barberToFormWorkingHours(workingHours: WorkingHours[]): BarberFormValues['workingHours'] {
+  const byDay = new Map(workingHours.map((wh) => [wh.dayOfWeek, wh]));
+  return [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => {
+    const existing = byDay.get(dayOfWeek);
+    return existing
+      ? {
+          dayOfWeek,
+          startTime: existing.startTime,
+          endTime: existing.endTime,
+          lunchStartTime: existing.lunchStartTime ?? '',
+          lunchEndTime: existing.lunchEndTime ?? '',
+          isAvailable: existing.isAvailable,
+        }
+      : {
+          dayOfWeek,
+          startTime: '09:00',
+          endTime: '18:00',
+          lunchStartTime: '',
+          lunchEndTime: '',
+          isAvailable: false,
+        };
+  });
+}
+
+function formToApiWorkingHours(
+  workingHours: BarberFormValues['workingHours']
+): WorkingHours[] {
+  return workingHours
+    .filter((wh) => wh.isAvailable)
+    .map((wh) => {
+      const hasLunch =
+        wh.lunchStartTime != null &&
+        wh.lunchStartTime !== '' &&
+        wh.lunchEndTime != null &&
+        wh.lunchEndTime !== '';
+      const base = {
+        dayOfWeek: wh.dayOfWeek,
+        startTime: wh.startTime,
+        endTime: wh.endTime,
+        isAvailable: true,
+      };
+      if (hasLunch) {
+        return { ...base, lunchStartTime: wh.lunchStartTime, lunchEndTime: wh.lunchEndTime };
+      }
+      return base;
+    });
+}
 
 export default function BarbersPage() {
   const { user } = useAuth();
@@ -51,25 +113,36 @@ export default function BarbersPage() {
     : allBarbers.filter((b) => b.active);
   const activeCount = allBarbers.filter((b) => b.active).length;
 
+  const defaultValues = useMemo<BarberFormValues>(
+    () => ({ name: '', workingHours: defaultWorkingHours() }),
+    []
+  );
+
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateBarberInput>({
-    resolver: zodResolver(createBarberSchema),
-    defaultValues: { name: '' },
+  } = useForm<BarberFormValues>({
+    resolver: zodResolver(createBarberSchema) as Resolver<BarberFormValues>,
+    defaultValues,
   });
+
+  const { fields } = useFieldArray({ control, name: 'workingHours' });
 
   const openCreate = () => {
     setEditingBarber(null);
-    reset({ name: '' });
+    reset({ name: '', workingHours: defaultWorkingHours() });
     setShowForm(true);
   };
 
   const openEdit = (b: Barber) => {
     setEditingBarber(b);
-    reset({ name: b.name });
+    reset({
+      name: b.name,
+      workingHours: barberToFormWorkingHours(b.workingHours ?? []),
+    });
     setShowForm(true);
   };
 
@@ -87,9 +160,14 @@ export default function BarbersPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: { name?: string } }) =>
-      updateBarber(id, input),
-    onSuccess: (_, { id }) => {
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: { name?: string; workingHours?: WorkingHours[] };
+    }) => updateBarber(id, input),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['barbers'] });
       closeForm();
     },
@@ -104,10 +182,12 @@ export default function BarbersPage() {
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    const workingHours = formToApiWorkingHours(values.workingHours ?? []);
+    const payload = { name: values.name, workingHours };
     if (editingBarber) {
-      await updateMutation.mutateAsync({ id: editingBarber.id, input: { name: values.name } });
+      await updateMutation.mutateAsync({ id: editingBarber.id, input: payload });
     } else {
-      await createMutation.mutateAsync(values);
+      await createMutation.mutateAsync(payload);
     }
   });
 
@@ -305,6 +385,79 @@ export default function BarbersPage() {
                       <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
                     )}
                   </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+                      <ClockIcon className="h-4 w-4" aria-hidden />
+                      Horários de trabalho
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Por dia: início e fim. Opcional: horário de almoço (não aparecerá para agendamento).
+                    </p>
+                    <div className="mt-3 max-h-[40vh] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+                      {fields.map((field, index) => (
+                        <div
+                          key={field.id}
+                          className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm"
+                        >
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              {...register(`workingHours.${index}.isAvailable`)}
+                              className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                            />
+                            <span className="font-medium text-zinc-800">
+                              {DAY_NAMES[field.dayOfWeek]}
+                            </span>
+                          </label>
+                          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <div>
+                              <label className="text-xs text-zinc-500">Início</label>
+                              <input
+                                type="time"
+                                {...register(`workingHours.${index}.startTime`)}
+                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-zinc-500">Fim</label>
+                              <input
+                                type="time"
+                                {...register(`workingHours.${index}.endTime`)}
+                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-zinc-500">Almoço início</label>
+                              <input
+                                type="time"
+                                {...register(`workingHours.${index}.lunchStartTime`)}
+                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                placeholder="—"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-zinc-500">Almoço fim</label>
+                              <input
+                                type="time"
+                                {...register(`workingHours.${index}.lunchEndTime`)}
+                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                placeholder="—"
+                              />
+                            </div>
+                          </div>
+                          {errors.workingHours?.[index] && (
+                            <p className="mt-1 text-xs text-red-600">
+                              {errors.workingHours[index]?.startTime?.message ??
+                                errors.workingHours[index]?.endTime?.message ??
+                                errors.workingHours[index]?.lunchEndTime?.message}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="flex gap-3">
                     <button
                       type="button"
