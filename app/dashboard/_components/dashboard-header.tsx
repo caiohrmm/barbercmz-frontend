@@ -16,7 +16,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/agenda': 'Agenda',
   '/dashboard/services': 'Serviços',
   '/dashboard/clients': 'Clientes',
+  '/dashboard/barbers': 'Barbeiros',
   '/dashboard/billing': 'Faturamento',
+  '/dashboard/billing/plan': 'Mudar plano',
   '/dashboard/settings': 'Configurações',
   '/dashboard/menu': 'Menu',
 };

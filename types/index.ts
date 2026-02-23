@@ -13,6 +13,17 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface Plan {
+  id: string;
+  name: string;
+  priceMonthly: number;
+  maxBarbers: number;
+  features: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Barbershop {
   id: string;
   name: string;

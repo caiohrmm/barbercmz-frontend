@@ -8,6 +8,8 @@ export const ROUTES = {
   DASHBOARD_SERVICES: '/dashboard/services',
   DASHBOARD_CLIENTS: '/dashboard/clients',
   DASHBOARD_BILLING: '/dashboard/billing',
+  DASHBOARD_BILLING_PLAN: '/dashboard/billing/plan',
+  DASHBOARD_BARBERS: '/dashboard/barbers',
   DASHBOARD_SETTINGS: '/dashboard/settings',
   DASHBOARD_MENU: '/dashboard/menu',
 } as const;

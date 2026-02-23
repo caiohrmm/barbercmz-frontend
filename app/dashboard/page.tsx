@@ -7,6 +7,7 @@ import {
   CalendarDaysIcon,
   ScissorsIcon,
   UserGroupIcon,
+  UserPlusIcon,
   BanknotesIcon,
   Cog6ToothIcon,
   ChevronRightIcon,
@@ -43,12 +44,14 @@ export default function DashboardPage() {
       ? [
           { href: '/dashboard/services', label: 'Serviços', icon: ScissorsIcon },
           { href: '/dashboard/clients', label: 'Clientes', icon: UserGroupIcon },
+          { href: '/dashboard/barbers', label: 'Barbeiros', icon: UserPlusIcon },
           { href: '/dashboard/billing', label: 'Faturamento', icon: BanknotesIcon },
           { href: '/dashboard/settings', label: 'Configurações', icon: Cog6ToothIcon },
         ]
       : [
           { href: '/dashboard/services', label: 'Serviços', icon: ScissorsIcon },
           { href: '/dashboard/clients', label: 'Clientes', icon: UserGroupIcon },
+          { href: '/dashboard/barbers', label: 'Barbeiros', icon: UserPlusIcon },
           { href: '/dashboard/settings', label: 'Configurações', icon: Cog6ToothIcon },
         ];
 
