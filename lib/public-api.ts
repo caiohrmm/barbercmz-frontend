@@ -117,8 +117,57 @@ export interface CreateAppointmentResponse {
   };
 }
 
+export interface RequestVerificationResponse {
+  verificationId: string;
+  message: string;
+}
+
+/**
+ * Request SMS verification (sends code to phone). Returns verificationId for the next step.
+ */
+export async function requestAppointmentVerification(
+  payload: CreateAppointmentPayload
+): Promise<RequestVerificationResponse> {
+  const baseUrl = getBaseUrl();
+  const res = await fetch(`${baseUrl}/appointments/request-verification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error(data?.error || res.statusText) as Error & { statusCode?: number };
+    err.statusCode = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+/**
+ * Verify SMS code and create appointment. Call after requestAppointmentVerification.
+ */
+export async function verifyAppointment(
+  verificationId: string,
+  code: string
+): Promise<CreateAppointmentResponse> {
+  const baseUrl = getBaseUrl();
+  const res = await fetch(`${baseUrl}/appointments/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ verificationId, code }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error(data?.error || res.statusText) as Error & { statusCode?: number };
+    err.statusCode = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
 /**
  * Create appointment (public, no auth). Rate limited on backend.
+ * Prefer requestAppointmentVerification + verifyAppointment for SMS flow.
  */
 export async function createAppointment(
   payload: CreateAppointmentPayload
