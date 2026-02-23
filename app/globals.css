@@ -1,23 +1,6 @@
 @import "tailwindcss";
 
-/* Satoshi (variable font) - paths from public/ */
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-Variable.woff2') format('woff2'),
-       url('/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-Variable.woff') format('woff');
-  font-weight: 300 900;
-  font-display: swap;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-VariableItalic.woff2') format('woff2'),
-       url('/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-VariableItalic.woff') format('woff');
-  font-weight: 300 900;
-  font-display: swap;
-  font-style: italic;
-}
+/* Satoshi loaded via Fontshare CDN in layout.tsx head */
 
 :root {
   --background: #ffffff;

@@ -15,6 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=Satoshi@400,500,700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="font-sans antialiased">
         <QueryProvider>
           <AuthProvider>{children}</AuthProvider>
