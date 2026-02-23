@@ -1,15 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { getBarbershopById, uploadBarbershopLogo } from '@/lib/barbershop';
 import type { Barbershop } from '@/types';
-import { ArrowLeftIcon, PhotoIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PhotoIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif';
 const MAX_SIZE_MB = 5;
+
+function getErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const res = (err as { response?: { data?: unknown; status?: number } }).response;
+    const data = res?.data;
+    if (data && typeof data === 'object') {
+      const d = data as Record<string, unknown>;
+      if (typeof d.error === 'string') return d.error;
+      if (typeof d.message === 'string') return d.message;
+    }
+    if (res?.status === 401) return 'Sessão expirada. Faça login novamente.';
+    if (res?.status === 403) return 'Sem permissão para alterar esta barbearia.';
+    if (res?.status === 503) return 'Serviço de imagens indisponível. Tente mais tarde.';
+  }
+  if (err instanceof Error) return err.message;
+  return 'Não foi possível enviar a logo. Tente novamente.';
+}
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -17,6 +34,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user?.barbershopId) return;
@@ -40,7 +59,14 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file || !user?.barbershopId) return;
 
-    if (!ACEPT.split(',').map((t) => t.trim()).includes(file.type)) {
+    // Preview imediato
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setMessage(null);
+
+    if (!ACCEPT.split(',').map((t) => t.trim()).includes(file.type)) {
       setMessage({ type: 'error', text: 'Formato inválido. Use JPEG, PNG, WebP ou GIF.' });
       return;
     }
@@ -49,22 +75,32 @@ export default function SettingsPage() {
       return;
     }
 
-    setMessage(null);
     setUploading(true);
     try {
       const { barbershop: updated } = await uploadBarbershopLogo(user.barbershopId, file);
       setBarbershop(updated);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
       setMessage({ type: 'success', text: 'Logo atualizada. Ela será exibida na página de agendamento.' });
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
-        : 'Não foi possível enviar a logo. Tente novamente.';
-      setMessage({ type: 'error', text: msg || 'Erro ao enviar logo.' });
+      const msg = getErrorMessage(err);
+      setMessage({ type: 'error', text: msg });
+      console.error('[Settings] Erro ao enviar logo:', err);
+      messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } finally {
       setUploading(false);
       e.target.value = '';
     }
   };
+
+  // Limpar preview ao desmontar
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   if (loading) {
     return (
@@ -76,7 +112,7 @@ export default function SettingsPage() {
 
   if (!barbershop) {
     return (
-      <div className="p-4">
+      <div className="px-4 py-6 sm:px-6">
         <p className="text-red-600">Não foi possível carregar os dados da barbearia.</p>
         <Link href="/dashboard" className="mt-2 inline-flex items-center gap-1 text-sm text-zinc-600 hover:underline">
           <ArrowLeftIcon className="h-4 w-4" /> Voltar ao dashboard
@@ -86,18 +122,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-4">
-      <div className="mb-6 flex items-center gap-4">
-        <Link
-          href="/dashboard"
-          className="rounded-lg p-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-          aria-label="Voltar ao dashboard"
-        >
-          <ArrowLeftIcon className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-bold text-zinc-900">Configurações</h1>
-      </div>
-
+    <div className="px-4 pb-24 pt-6 sm:px-6 sm:pb-8">
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-zinc-800">Logo da barbearia</h2>
         <p className="mb-4 text-sm text-zinc-500">
@@ -105,21 +130,34 @@ export default function SettingsPage() {
         </p>
 
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
-            {barbershop.logoUrl ? (
+          <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-zinc-200 bg-zinc-50">
+            {previewUrl ? (
+              <>
+                <img
+                  src={previewUrl}
+                  alt="Preview da imagem"
+                  className="h-full w-full object-cover"
+                />
+                {uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <ArrowPathIcon className="h-8 w-8 animate-spin text-white" aria-hidden />
+                  </div>
+                )}
+              </>
+            ) : barbershop.logoUrl ? (
               <Image
                 src={barbershop.logoUrl}
                 alt="Logo atual"
-                width={96}
-                height={96}
+                width={112}
+                height={112}
                 className="h-full w-full object-cover"
               />
             ) : (
-              <PhotoIcon className="h-10 w-10 text-zinc-400" aria-hidden />
+              <PhotoIcon className="h-12 w-12 text-zinc-400" aria-hidden />
             )}
           </div>
           <div>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-within:ring-2 focus-within:ring-amber-500 focus-within:ring-offset-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border-2 border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:border-amber-400 hover:bg-amber-50/50 focus-within:ring-2 focus-within:ring-amber-500 focus-within:ring-offset-2 disabled:pointer-events-none disabled:opacity-60">
               <input
                 type="file"
                 accept={ACCEPT}
@@ -143,18 +181,26 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {message && (
-          <div
-            role="alert"
-            className={`mt-4 rounded-xl px-4 py-3 text-sm ${
-              message.type === 'success'
-                ? 'bg-green-50 text-green-800'
-                : 'bg-red-50 text-red-800'
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
+        {/* Área de feedback sempre visível */}
+        <div ref={messageRef} className="mt-4 min-h-[3.5rem]">
+          {message && (
+            <div
+              role="alert"
+              className={`flex items-start gap-3 rounded-xl border-2 px-4 py-3 text-sm ${
+                message.type === 'success'
+                  ? 'border-green-200 bg-green-50 text-green-800'
+                  : 'border-red-200 bg-red-50 text-red-800'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+              ) : (
+                <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+              )}
+              <span className="font-medium">{message.text}</span>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

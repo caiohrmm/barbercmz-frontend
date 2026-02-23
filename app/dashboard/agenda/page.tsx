@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Listbox,
@@ -81,22 +80,7 @@ export default function AgendaPage() {
   const appointments = data?.appointments ?? [];
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <div className="border-b border-zinc-200 bg-white px-4 py-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900"
-          >
-            <ChevronLeftIcon className="h-5 w-5" aria-hidden />
-            Voltar
-          </Link>
-          <h1 className="text-lg font-semibold text-zinc-900">Agenda</h1>
-          <div className="w-16" />
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="px-4 pb-6 pt-6 sm:px-6">
         {/* Filtro de data */}
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -225,7 +209,6 @@ export default function AgendaPage() {
             ))}
           </ul>
         )}
-      </div>
     </div>
   );
 }

@@ -40,7 +40,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file || !user?.barbershopId) return;
 
-    if (!ACEPT.split(',').map((t) => t.trim()).includes(file.type)) {
+    if (!ACCEPT.split(',').map((t) => t.trim()).includes(file.type)) {
       setMessage({ type: 'error', text: 'Formato inválido. Use JPEG, PNG, WebP ou GIF.' });
       return;
     }

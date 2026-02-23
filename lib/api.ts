@@ -10,7 +10,7 @@ const api: AxiosInstance = axios.create({
   withCredentials: true, // Important for cookies
 });
 
-// Request interceptor - Add access token to headers
+// Request interceptor - Add access token and fix FormData
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Get access token from memory (not localStorage)
@@ -18,6 +18,11 @@ api.interceptors.request.use(
 
     if (accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    // FormData must not use application/json; let axios set multipart/form-data with boundary
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
     }
 
     return config;

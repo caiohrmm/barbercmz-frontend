@@ -1,22 +1,15 @@
 'use client';
 
-import Link from 'next/link';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon } from '@heroicons/react/24/outline';
 
 export default function ClientsPage() {
   return (
-    <div className="p-4">
-      <div className="mb-6 flex items-center gap-4">
-        <Link
-          href="/dashboard"
-          className="rounded-lg p-1 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-          aria-label="Voltar ao dashboard"
-        >
-          <ArrowLeftIcon className="h-5 w-5" />
-        </Link>
-        <h1 className="text-2xl font-bold text-zinc-900">Clientes</h1>
+    <div className="px-4 pb-24 pt-6 sm:px-6 sm:pb-8">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
+        <UserGroupIcon className="mx-auto h-12 w-12 text-zinc-300" aria-hidden />
+        <p className="mt-3 font-medium text-zinc-600">Clientes</p>
+        <p className="mt-1 text-sm text-zinc-500">Em breve: listar e gerenciar clientes.</p>
       </div>
-      <p className="text-zinc-600">Em breve: listar e gerenciar clientes.</p>
     </div>
   );
 }

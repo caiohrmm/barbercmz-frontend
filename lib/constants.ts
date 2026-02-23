@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD_CLIENTS: '/dashboard/clients',
   DASHBOARD_BILLING: '/dashboard/billing',
   DASHBOARD_SETTINGS: '/dashboard/settings',
+  DASHBOARD_MENU: '/dashboard/menu',
 } as const;
 
 export const USER_ROLES = {
