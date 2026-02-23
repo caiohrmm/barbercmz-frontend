@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Listbox,
   ListboxButton,
@@ -13,11 +15,16 @@ import {
   BanknotesIcon,
   ClockIcon,
   ChevronDownIcon,
+  UserCircleIcon,
+  PhoneIcon,
+  ArrowPathIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import type { Barbershop, Service } from '@/types';
 import type { AvailableSlot } from '@/lib/public-api';
-import { getAvailableSlots } from '@/lib/public-api';
+import { getAvailableSlots, createAppointment } from '@/lib/public-api';
+import { bookingCustomerSchema, type BookingCustomerInput } from '@/lib/validators';
 import { addDays, format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -48,6 +55,19 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<BookingCustomerInput>({
+    resolver: zodResolver(bookingCustomerSchema),
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dateOptions = Array.from({ length: NEXT_DAYS }, (_, i) => {
     const d = addDays(new Date(), i);
@@ -77,6 +97,43 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
       cancelled = true;
     };
   }, [barbershop.id, selectedService?.id, selectedDate]);
+
+  const onConfirmBooking = handleSubmit(async (data) => {
+    if (!selectedService || !selectedDate || !selectedSlot) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const startTime = new Date(`${selectedDate}T${selectedSlot.time}:00`).toISOString();
+      await createAppointment({
+        barbershopId: barbershop.id,
+        barberId: selectedSlot.barberId,
+        serviceId: selectedService.id,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        startTime,
+      });
+      setSubmitSuccess(true);
+      reset();
+    } catch (err) {
+      const message =
+        err instanceof Error && 'statusCode' in err
+          ? err.message
+          : 'Não foi possível confirmar. Tente novamente.';
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  const handleAgendarOutro = () => {
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    setSelectedService(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setSlots([]);
+    reset();
+  };
 
   return (
     <div className="min-h-[100dvh] bg-zinc-50">
@@ -161,6 +218,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                     </ListboxOptions>
                   </Transition>
                 </Listbox>
+                </div>
               )}
             </section>
 
@@ -258,17 +316,120 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
               )}
             </section>
 
-            {/* Resumo (para etapa 3) */}
-            {selectedService && selectedDate && selectedSlot && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
-                <p className="text-sm font-medium text-amber-900">Resumo</p>
-                <p className="mt-1 text-sm text-zinc-700">
-                  {selectedService.name} · {format(new Date(selectedDate + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR })} às {selectedSlot.time} com {selectedSlot.barberName}
-                </p>
-                <p className="mt-2 text-xs text-zinc-500">
-                  Na próxima etapa você informa nome e telefone para confirmar.
-                </p>
-              </div>
+            {/* Sucesso */}
+            {submitSuccess && (
+              <Transition
+                show={submitSuccess}
+                enter="transition duration-200 ease-out"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
+              >
+                <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
+                  <CheckCircleIcon className="mx-auto h-12 w-12 text-green-600" aria-hidden />
+                  <h3 className="mt-3 text-lg font-semibold text-green-900">
+                    Agendamento confirmado!
+                  </h3>
+                  <p className="mt-1 text-sm text-green-800">
+                    Você receberá os detalhes no telefone informado.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAgendarOutro}
+                    className="mt-4 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  >
+                    Fazer outro agendamento
+                  </button>
+                </div>
+              </Transition>
+            )}
+
+            {/* 4. Seus dados + Confirmar (só quando serviço, data e horário escolhidos e não sucesso) */}
+            {selectedService && selectedDate && selectedSlot && !submitSuccess && (
+              <section aria-labelledby="customer-heading">
+                <h2 id="customer-heading" className="mb-3 text-sm font-medium text-zinc-700">
+                  4. Seus dados
+                </h2>
+                <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                  <p className="mb-4 text-sm text-zinc-600">
+                    {selectedService.name} ·{' '}
+                    {format(new Date(selectedDate + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR })} às{' '}
+                    {selectedSlot.time} · {selectedSlot.barberName}
+                  </p>
+
+                  {submitError && (
+                    <div
+                      className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                      role="alert"
+                    >
+                      {submitError}
+                    </div>
+                  )}
+
+                  <form onSubmit={onConfirmBooking} className="space-y-4">
+                    <div>
+                      <label htmlFor="booking-name" className="block text-sm font-medium text-zinc-700">
+                        Nome
+                      </label>
+                      <div className="relative mt-1">
+                        <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" aria-hidden />
+                        <input
+                          {...register('customerName')}
+                          type="text"
+                          id="booking-name"
+                          autoComplete="name"
+                          placeholder="Seu nome"
+                          disabled={isSubmitting}
+                          className="w-full rounded-xl border border-zinc-300 py-3 pl-11 pr-4 text-zinc-900 placeholder-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                        />
+                      </div>
+                      {errors.customerName && (
+                        <p className="mt-1 text-sm text-red-600" role="alert">
+                          {errors.customerName.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="booking-phone" className="block text-sm font-medium text-zinc-700">
+                        Telefone
+                      </label>
+                      <div className="relative mt-1">
+                        <PhoneIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" aria-hidden />
+                        <input
+                          {...register('customerPhone')}
+                          type="tel"
+                          id="booking-phone"
+                          autoComplete="tel"
+                          placeholder="(11) 99999-9999"
+                          disabled={isSubmitting}
+                          className="w-full rounded-xl border border-zinc-300 py-3 pl-11 pr-4 text-zinc-900 placeholder-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                        />
+                      </div>
+                      {errors.customerPhone && (
+                        <p className="mt-1 text-sm text-red-600" role="alert">
+                          {errors.customerPhone.message}
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Com DDD. Ex: (11) 99999-9999 ou +5511999999999
+                      </p>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-3.5 px-4 font-medium text-zinc-950 shadow-lg shadow-amber-500/25 hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-70"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <ArrowPathIcon className="h-5 w-5 animate-spin" aria-hidden />
+                          Confirmando...
+                        </>
+                      ) : (
+                        'Confirmar agendamento'
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </section>
             )}
           </div>
         </div>
