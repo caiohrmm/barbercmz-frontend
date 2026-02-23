@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +19,8 @@ import {
   PhoneIcon,
   ArrowPathIcon,
   CheckCircleIcon,
+  CalendarDaysIcon,
+  ScissorsIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import type { Barbershop, Service } from '@/types';
@@ -57,6 +59,15 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [slotsError, setSlotsError] = useState(false);
+  const [lastBookingSummary, setLastBookingSummary] = useState<{
+    serviceName: string;
+    date: string;
+    time: string;
+    barberName: string;
+    appointmentId?: string;
+  } | null>(null);
+  const successButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     register,
@@ -83,12 +94,16 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     let cancelled = false;
     setSlotsLoading(true);
     setSelectedSlot(null);
+    setSlotsError(false);
     getAvailableSlots(barbershop.id, selectedDate, selectedService.id)
       .then((res) => {
         if (!cancelled) setSlots(res.slots);
       })
       .catch(() => {
-        if (!cancelled) setSlots([]);
+        if (!cancelled) {
+          setSlots([]);
+          setSlotsError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -104,13 +119,20 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     setSubmitError(null);
     try {
       const startTime = new Date(`${selectedDate}T${selectedSlot.time}:00`).toISOString();
-      await createAppointment({
+      const res = await createAppointment({
         barbershopId: barbershop.id,
         barberId: selectedSlot.barberId,
         serviceId: selectedService.id,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         startTime,
+      });
+      setLastBookingSummary({
+        serviceName: selectedService.name,
+        date: format(new Date(selectedDate + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR }),
+        time: selectedSlot.time,
+        barberName: selectedSlot.barberName,
+        appointmentId: res.appointment?.id?.slice(-6),
       });
       setSubmitSuccess(true);
       reset();
@@ -128,12 +150,19 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
   const handleAgendarOutro = () => {
     setSubmitSuccess(false);
     setSubmitError(null);
+    setLastBookingSummary(null);
     setSelectedService(null);
     setSelectedDate(null);
     setSelectedSlot(null);
     setSlots([]);
     reset();
   };
+
+  useEffect(() => {
+    if (submitSuccess && successButtonRef.current) {
+      successButtonRef.current.focus();
+    }
+  }, [submitSuccess]);
 
   return (
     <div className="min-h-[100dvh] bg-zinc-50">
@@ -169,8 +198,16 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                 1. Serviço
               </h2>
               {services.length === 0 ? (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center text-zinc-500">
-                  Nenhum serviço disponível.
+                <div
+                  className="rounded-2xl border border-zinc-200 bg-white p-8 text-center"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <ScissorsIcon className="mx-auto h-12 w-12 text-zinc-300" aria-hidden />
+                  <p className="mt-3 font-medium text-zinc-600">Nenhum serviço disponível</p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Entre em contato com a barbearia para mais informações.
+                  </p>
                 </div>
               ) : (
                 <div className="relative">
@@ -233,6 +270,8 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                     key={opt.value}
                     type="button"
                     onClick={() => setSelectedDate(opt.value)}
+                    aria-pressed={selectedDate === opt.value}
+                    aria-label={isToday(opt.date) ? `Hoje, ${opt.label}` : opt.label}
                     className={`min-w-[7rem] shrink-0 rounded-xl border px-3 py-3 text-center text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
                       selectedDate === opt.value
                         ? 'border-amber-500 bg-amber-500 text-zinc-950'
@@ -258,16 +297,38 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                   Selecione serviço e data para ver horários.
                 </div>
               ) : slotsLoading ? (
-                <div className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white py-10">
+                <div
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white py-10"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
                   <div
                     className="h-5 w-5 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"
                     aria-hidden
                   />
                   <span className="text-sm text-zinc-500">Buscando horários...</span>
                 </div>
+              ) : slotsError ? (
+                <div
+                  className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center"
+                  role="alert"
+                >
+                  <p className="font-medium text-amber-900">Não foi possível carregar os horários</p>
+                  <p className="mt-1 text-sm text-amber-800">
+                    Tente novamente ou escolha outra data.
+                  </p>
+                </div>
               ) : slots.length === 0 ? (
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
-                  Nenhum horário disponível neste dia. Escolha outra data.
+                <div
+                  className="rounded-2xl border border-zinc-200 bg-white p-8 text-center"
+                  role="status"
+                >
+                  <CalendarDaysIcon className="mx-auto h-12 w-12 text-zinc-300" aria-hidden />
+                  <p className="mt-3 font-medium text-zinc-600">Nenhum horário disponível neste dia</p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Escolha outra data para ver os horários.
+                  </p>
                 </div>
               ) : (
                 <div className="relative">
@@ -317,25 +378,58 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
             </section>
 
             {/* Sucesso */}
-            {submitSuccess && (
+            {submitSuccess && lastBookingSummary && (
               <Transition
                 show={submitSuccess}
                 enter="transition duration-200 ease-out"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
               >
-                <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
-                  <CheckCircleIcon className="mx-auto h-12 w-12 text-green-600" aria-hidden />
-                  <h3 className="mt-3 text-lg font-semibold text-green-900">
+                <div
+                  className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center shadow-sm"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <CheckCircleIcon className="mx-auto h-14 w-14 text-green-600" aria-hidden />
+                  <h3 className="mt-4 text-xl font-semibold text-green-900">
                     Agendamento confirmado!
                   </h3>
-                  <p className="mt-1 text-sm text-green-800">
-                    Você receberá os detalhes no telefone informado.
+                  <p className="mt-2 text-sm text-green-800">
+                    Guarde os detalhes abaixo para referência.
+                  </p>
+                  <dl className="mt-4 rounded-xl bg-white/60 p-4 text-left text-sm">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-green-800">Serviço</dt>
+                      <dd className="font-medium text-green-900">{lastBookingSummary.serviceName}</dd>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-2">
+                      <dt className="text-green-800">Data</dt>
+                      <dd className="font-medium text-green-900 capitalize">{lastBookingSummary.date}</dd>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-2">
+                      <dt className="text-green-800">Horário</dt>
+                      <dd className="font-medium text-green-900">{lastBookingSummary.time}</dd>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-2">
+                      <dt className="text-green-800">Barbeiro</dt>
+                      <dd className="font-medium text-green-900">{lastBookingSummary.barberName}</dd>
+                    </div>
+                    {lastBookingSummary.appointmentId && (
+                      <div className="mt-2 flex justify-between gap-2 border-t border-green-200 pt-2">
+                        <dt className="text-green-800">Nº ref.</dt>
+                        <dd className="font-mono font-medium text-green-900">#{lastBookingSummary.appointmentId}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  <p className="mt-3 text-xs text-green-700">
+                    Você pode receber uma confirmação no telefone informado.
                   </p>
                   <button
                     type="button"
+                    ref={successButtonRef}
                     onClick={handleAgendarOutro}
-                    className="mt-4 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                    className="mt-5 rounded-xl bg-green-600 px-5 py-3 text-sm font-medium text-white shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-green-50"
                   >
                     Fazer outro agendamento
                   </button>
