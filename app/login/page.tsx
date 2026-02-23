@@ -62,12 +62,12 @@ export default function LoginPage() {
           {/* Header */}
           <header className="mb-10 flex flex-col items-center text-center">
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               alt="BarberCMZ"
-              width={120}
-              height={48}
+              width={200}
+              height={100}
               priority
-              className="h-12 w-auto object-contain"
+              className="h-20w-auto object-contain"
             />
             <p className="mt-4 text-sm text-zinc-400">
               Entre na sua conta para continuar
