@@ -22,6 +22,29 @@ export const createAppointmentSchema = z.object({
 
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 
+// Booking form (step 3: only name + phone; phone normalized to E.164)
+const e164Regex = /^\+?[1-9]\d{1,14}$/;
+export const bookingCustomerSchema = z.object({
+  customerName: z
+    .string()
+    .min(2, 'Nome deve ter no mínimo 2 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  customerPhone: z
+    .string()
+    .min(1, 'Telefone é obrigatório')
+    .transform((val) => {
+      const digits = val.replace(/\D/g, '');
+      if (digits.length === 11 && digits.startsWith('1')) return `+55${digits}`;
+      if (digits.length === 13 && digits.startsWith('55')) return `+${digits}`;
+      return val;
+    })
+    .refine((val) => e164Regex.test(val), {
+      message: 'Use o formato com DDD, ex: (11) 99999-9999 ou +5511999999999',
+    }),
+});
+
+export type BookingCustomerInput = z.infer<typeof bookingCustomerSchema>;
+
 // Barber validators
 export const workingHoursSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6),

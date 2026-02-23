@@ -68,3 +68,46 @@ export async function getAvailableSlots(
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
 }
+
+export interface CreateAppointmentPayload {
+  barbershopId: string;
+  barberId: string;
+  serviceId: string;
+  customerName: string;
+  customerPhone: string;
+  startTime: string; // ISO 8601
+}
+
+export interface CreateAppointmentResponse {
+  appointment: {
+    id: string;
+    barbershopId: string;
+    barberId: string;
+    serviceId: string;
+    customerId: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+  };
+}
+
+/**
+ * Create appointment (public, no auth). Rate limited on backend.
+ */
+export async function createAppointment(
+  payload: CreateAppointmentPayload
+): Promise<CreateAppointmentResponse> {
+  const baseUrl = getBaseUrl();
+  const res = await fetch(`${baseUrl}/appointments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const err = new Error(data?.error || res.statusText) as Error & { statusCode?: number };
+    err.statusCode = res.status;
+    throw err;
+  }
+  return res.json();
+}
