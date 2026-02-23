@@ -40,6 +40,30 @@ export async function getPublicServices(
   return res.json();
 }
 
+export interface PublicBarber {
+  id: string;
+  name: string;
+}
+
+export interface PublicBarbersResponse {
+  barbers: PublicBarber[];
+  count: number;
+}
+
+/**
+ * Fetch barbers for public booking (id + name). Used when barbershop has multiple barbers.
+ */
+export async function getPublicBarbers(
+  barbershopId: string
+): Promise<PublicBarbersResponse> {
+  const baseUrl = getBaseUrl();
+  const res = await fetch(`${baseUrl}/barbershops/${barbershopId}/barbers`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
 export interface AvailableSlot {
   time: string;
   barberId: string;
@@ -52,15 +76,17 @@ export interface AvailableSlotsResponse {
 
 /**
  * Fetch available time slots for a date and service (public).
- * date: YYYY-MM-DD
+ * date: YYYY-MM-DD. If barberId is provided, only that barber's slots are returned.
  */
 export async function getAvailableSlots(
   barbershopId: string,
   date: string,
-  serviceId: string
+  serviceId: string,
+  barberId?: string
 ): Promise<AvailableSlotsResponse> {
   const baseUrl = getBaseUrl();
   const params = new URLSearchParams({ date, serviceId });
+  if (barberId) params.set('barberId', barberId);
   const res = await fetch(
     `${baseUrl}/barbershops/${barbershopId}/available-slots?${params}`,
     { cache: 'no-store' }

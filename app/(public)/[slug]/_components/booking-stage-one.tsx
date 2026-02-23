@@ -16,8 +16,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import type { Barbershop, Service } from '@/types';
-import type { AvailableSlot } from '@/lib/public-api';
-import { getAvailableSlots, createAppointment } from '@/lib/public-api';
+import type { AvailableSlot, PublicBarber } from '@/lib/public-api';
+import { getPublicBarbers, getAvailableSlots, createAppointment } from '@/lib/public-api';
 import { bookingCustomerSchema, type BookingCustomerInput } from '@/lib/validators';
 import { addDays, format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -57,6 +57,8 @@ interface BookingStageOneProps {
 }
 
 export function BookingStageOne({ barbershop, services }: BookingStageOneProps) {
+  const [barbers, setBarbers] = useState<PublicBarber[]>([]);
+  const [selectedBarber, setSelectedBarber] = useState<PublicBarber | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
@@ -73,6 +75,8 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     appointmentId?: string;
   } | null>(null);
   const successButtonRef = useRef<HTMLButtonElement>(null);
+
+  const hasBarberStep = barbers.length > 1;
 
   const {
     control,
@@ -92,7 +96,29 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
   const maxDateStr = format(addDays(today, NEXT_DAYS - 1), 'yyyy-MM-dd');
 
   useEffect(() => {
+    let cancelled = false;
+    getPublicBarbers(barbershop.id)
+      .then((res) => {
+        if (!cancelled) {
+          setBarbers(res.barbers ?? []);
+          if (res.barbers?.length === 1) setSelectedBarber(res.barbers[0]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBarbers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [barbershop.id]);
+
+  useEffect(() => {
     if (!selectedService || !selectedDate) {
+      setSlots([]);
+      setSelectedSlot(null);
+      return;
+    }
+    if (hasBarberStep && !selectedBarber) {
       setSlots([]);
       setSelectedSlot(null);
       return;
@@ -101,7 +127,12 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     setSlotsLoading(true);
     setSelectedSlot(null);
     setSlotsError(false);
-    getAvailableSlots(barbershop.id, selectedDate, selectedService.id)
+    getAvailableSlots(
+      barbershop.id,
+      selectedDate,
+      selectedService.id,
+      selectedBarber?.id
+    )
       .then((res) => {
         if (!cancelled) setSlots(res.slots);
       })
@@ -117,7 +148,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     return () => {
       cancelled = true;
     };
-  }, [barbershop.id, selectedService?.id, selectedDate]);
+  }, [barbershop.id, selectedService?.id, selectedDate, selectedBarber?.id, hasBarberStep]);
 
   const onConfirmBooking = handleSubmit(async (data) => {
     if (!selectedService || !selectedDate || !selectedSlot) return;
@@ -158,6 +189,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     setSubmitError(null);
     setLastBookingSummary(null);
     setSelectedService(null);
+    setSelectedBarber(barbers.length === 1 ? barbers[0] : null);
     setSelectedDate(null);
     setSelectedSlot(null);
     setSlots([]);
@@ -171,21 +203,28 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     }
   }, [submitSuccess]);
 
-  const stepComplete = [!!selectedService, !!selectedDate, !!selectedSlot, false] as const;
+  const stepComplete = hasBarberStep
+    ? ([!!selectedService, !!selectedBarber, !!selectedDate, !!selectedSlot, false] as const)
+    : ([!!selectedService, !!selectedDate, !!selectedSlot, false] as const);
   const canGoToStep = (index: number) => {
-    if (index === 0) return true;
-    if (index === 1) return stepComplete[0];
-    if (index === 2) return stepComplete[0] && stepComplete[1];
-    if (index === 3) return stepComplete[0] && stepComplete[1] && stepComplete[2];
-    return false;
+    for (let i = 0; i < index; i++) if (!stepComplete[i]) return false;
+    return true;
   };
 
-  const steps = [
-    { key: 0, label: 'Serviço' },
-    { key: 1, label: 'Data' },
-    { key: 2, label: 'Horário' },
-    { key: 3, label: 'Dados' },
-  ];
+  const steps = hasBarberStep
+    ? [
+        { key: 0, label: 'Serviço' },
+        { key: 1, label: 'Barbeiro' },
+        { key: 2, label: 'Data' },
+        { key: 3, label: 'Horário' },
+        { key: 4, label: 'Dados' },
+      ]
+    : [
+        { key: 0, label: 'Serviço' },
+        { key: 1, label: 'Data' },
+        { key: 2, label: 'Horário' },
+        { key: 3, label: 'Dados' },
+      ];
 
   return (
     <div className="min-h-[100dvh] bg-white">
@@ -413,12 +452,80 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                 </>
               )}
 
-              {/* Etapa 2: Data */}
-              {selectedTabIndex === 1 && (
+              {/* Etapa Barbeiro (só quando há mais de um barbeiro) */}
+              {hasBarberStep && selectedTabIndex === 1 && (
+                <>
+                  <section aria-labelledby="barber-heading">
+                    <h2 id="barber-heading" className="mb-3 text-base font-medium text-zinc-800">
+                      2. Barbeiro
+                    </h2>
+                    <p className="mb-3 text-sm text-zinc-500">
+                      Escolha com quem deseja agendar.
+                    </p>
+                    <ul className="grid gap-3" role="list">
+                      {barbers.map((barber) => {
+                        const isSelected = selectedBarber?.id === barber.id;
+                        return (
+                          <li key={barber.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBarber(barber);
+                                setSelectedDate(null);
+                                setSelectedSlot(null);
+                                setSlots([]);
+                              }}
+                              aria-pressed={isSelected}
+                              aria-label={`Barbeiro ${barber.name}`}
+                              className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                                isSelected
+                                  ? 'border-amber-400 bg-amber-50/80'
+                                  : 'border-zinc-200 bg-white hover:border-amber-200 hover:bg-zinc-50'
+                              }`}
+                            >
+                              <span
+                                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
+                                  isSelected ? 'bg-amber-200/80 text-amber-800' : 'bg-zinc-100 text-zinc-500'
+                                }`}
+                              >
+                                <UserCircleIcon className="h-6 w-6" aria-hidden />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className={`font-medium ${isSelected ? 'text-zinc-900' : 'text-zinc-800'}`}>
+                                  {barber.name}
+                                </p>
+                              </div>
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                                  isSelected ? 'bg-amber-500 text-white' : 'border-2 border-zinc-300'
+                                }`}
+                              >
+                                {isSelected && <CheckIcon className="h-4 w-4" aria-hidden />}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                  {selectedBarber && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTabIndex(2)}
+                      className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+                    >
+                      Continuar
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* Etapa Data */}
+              {((hasBarberStep && selectedTabIndex === 2) || (!hasBarberStep && selectedTabIndex === 1)) && (
                 <>
                   <section aria-labelledby="date-heading">
                     <h2 id="date-heading" className="mb-3 text-base font-medium text-zinc-800">
-                      2. Data
+                      {hasBarberStep ? '3. Data' : '2. Data'}
                     </h2>
                     <label htmlFor="booking-date" className="sr-only">
                       Escolha uma data (próximos {NEXT_DAYS} dias)
@@ -447,7 +554,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
             {selectedDate && (
               <button
                 type="button"
-                onClick={() => setSelectedTabIndex(2)}
+                onClick={() => setSelectedTabIndex(hasBarberStep ? 3 : 2)}
                 className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
               >
                 Continuar
@@ -456,12 +563,12 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                 </>
               )}
 
-              {/* Etapa 3: Horário */}
-              {selectedTabIndex === 2 && (
+              {/* Etapa Horário */}
+              {((hasBarberStep && selectedTabIndex === 3) || (!hasBarberStep && selectedTabIndex === 2)) && (
                 <>
                   <section aria-labelledby="time-heading">
                     <h2 id="time-heading" className="mb-3 text-base font-medium text-zinc-800">
-                      3. Horário
+                      {hasBarberStep ? '4. Horário' : '3. Horário'}
                     </h2>
               {!selectedService || !selectedDate ? (
                 <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
@@ -541,7 +648,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
             {selectedSlot && (
               <button
                 type="button"
-                onClick={() => setSelectedTabIndex(3)}
+                onClick={() => setSelectedTabIndex(hasBarberStep ? 4 : 3)}
                 className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
               >
                 Continuar
@@ -550,13 +657,13 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                 </>
               )}
 
-              {/* Etapa 4: Dados */}
-              {selectedTabIndex === 3 && (
+              {/* Etapa Dados */}
+              {((hasBarberStep && selectedTabIndex === 4) || (!hasBarberStep && selectedTabIndex === 3)) && (
                 <>
                   {selectedService && selectedDate && selectedSlot ? (
               <section aria-labelledby="customer-heading">
                 <h2 id="customer-heading" className="mb-3 text-base font-medium text-zinc-800">
-                  4. Dados
+                  {hasBarberStep ? '5. Dados' : '4. Dados'}
                 </h2>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4">
                   <p className="mb-4 text-sm text-zinc-600">
