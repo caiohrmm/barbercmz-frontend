@@ -20,6 +20,8 @@ import {
   NoSymbolIcon,
   CheckCircleIcon,
   ClockIcon,
+  CalendarDaysIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { getBarbers, createBarber, updateBarber } from '@/lib/barbers';
 import { getBarbershopById } from '@/lib/barbershop';
@@ -114,7 +116,7 @@ export default function BarbersPage() {
   const activeCount = allBarbers.filter((b) => b.active).length;
 
   const defaultValues = useMemo<BarberFormValues>(
-    () => ({ name: '', workingHours: defaultWorkingHours() }),
+    () => ({ name: '', workingHours: defaultWorkingHours(), unavailableDates: [] }),
     []
   );
 
@@ -123,27 +125,45 @@ export default function BarbersPage() {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<BarberFormValues>({
     resolver: zodResolver(createBarberSchema) as Resolver<BarberFormValues>,
     defaultValues,
   });
 
-  const { fields } = useFieldArray({ control, name: 'workingHours' });
+  const { fields: workingHoursFields } = useFieldArray({ control, name: 'workingHours' });
+  const { fields: unavailableDatesFields, append: appendUnavailableDate, remove: removeUnavailableDate } = useFieldArray({
+    control,
+    name: 'unavailableDates',
+  });
+
+  const [newUnavailableDate, setNewUnavailableDate] = useState('');
 
   const openCreate = () => {
     setEditingBarber(null);
-    reset({ name: '', workingHours: defaultWorkingHours() });
+    setNewUnavailableDate('');
+    reset({ name: '', workingHours: defaultWorkingHours(), unavailableDates: [] });
     setShowForm(true);
   };
 
   const openEdit = (b: Barber) => {
     setEditingBarber(b);
+    setNewUnavailableDate('');
     reset({
       name: b.name,
       workingHours: barberToFormWorkingHours(b.workingHours ?? []),
+      unavailableDates: b.unavailableDates ?? [],
     });
     setShowForm(true);
+  };
+
+  const handleAddUnavailableDate = () => {
+    if (!newUnavailableDate) return;
+    const list = watch('unavailableDates') ?? [];
+    if (list.includes(newUnavailableDate)) return;
+    appendUnavailableDate(newUnavailableDate);
+    setNewUnavailableDate('');
   };
 
   const closeForm = () => {
@@ -165,7 +185,7 @@ export default function BarbersPage() {
       input,
     }: {
       id: string;
-      input: { name?: string; workingHours?: WorkingHours[] };
+      input: { name?: string; workingHours?: WorkingHours[]; unavailableDates?: string[] };
     }) => updateBarber(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['barbers'] });
@@ -183,7 +203,8 @@ export default function BarbersPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     const workingHours = formToApiWorkingHours(values.workingHours ?? []);
-    const payload = { name: values.name, workingHours };
+    const unavailableDates = values.unavailableDates ?? [];
+    const payload = { name: values.name, workingHours, unavailableDates };
     if (editingBarber) {
       await updateMutation.mutateAsync({ id: editingBarber.id, input: payload });
     } else {
@@ -395,7 +416,7 @@ export default function BarbersPage() {
                       Por dia: início e fim. Opcional: horário de almoço (não aparecerá para agendamento).
                     </p>
                     <div className="mt-3 max-h-[40vh] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
-                      {fields.map((field, index) => (
+                      {workingHoursFields.map((field, index) => (
                         <div
                           key={field.id}
                           className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm"
@@ -456,6 +477,59 @@ export default function BarbersPage() {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+                      <CalendarDaysIcon className="h-4 w-4" aria-hidden />
+                      Dias sem atendimento
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Feriados, folgas: o cliente não poderá agendar nestas datas para este barbeiro.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <input
+                        type="date"
+                        value={newUnavailableDate}
+                        onChange={(e) => setNewUnavailableDate(e.target.value)}
+                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        aria-label="Adicionar data"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddUnavailableDate}
+                        className="rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        Adicionar
+                      </button>
+                    </div>
+                    {unavailableDatesFields.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {unavailableDatesFields.map((field, index) => (
+                          <li
+                            key={field.id}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2 text-sm"
+                          >
+                            <span className="font-medium text-zinc-800">
+                              {new Date(watch(`unavailableDates.${index}`) + 'T12:00:00').toLocaleDateString('pt-BR', {
+                                weekday: 'short',
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeUnavailableDate(index)}
+                              className="rounded p-1 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              aria-label="Remover data"
+                            >
+                              <XMarkIcon className="h-4 w-4" aria-hidden />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
                   <div className="flex gap-3">

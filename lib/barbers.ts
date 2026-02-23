@@ -23,6 +23,7 @@ export async function getBarbers(activeOnly?: boolean): Promise<Barber[]> {
 export interface CreateBarberInput {
   name: string;
   workingHours?: WorkingHours[];
+  unavailableDates?: string[];
 }
 
 export interface CreateBarberResponse {
@@ -38,6 +39,7 @@ export async function createBarber(input: CreateBarberInput): Promise<Barber> {
 export interface UpdateBarberInput {
   name?: string;
   workingHours?: WorkingHours[];
+  unavailableDates?: string[];
   active?: boolean;
 }
 

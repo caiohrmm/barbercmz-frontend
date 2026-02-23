@@ -40,6 +40,8 @@ export interface Barber {
   id: string;
   name: string;
   workingHours: WorkingHours[];
+  /** Datas em que não atende (feriados, folga). Formato YYYY-MM-DD */
+  unavailableDates?: string[];
   barbershopId: string;
   active: boolean;
   createdAt: string;

@@ -92,9 +92,12 @@ export const workingHoursSchema = z
     }
   );
 
+const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
+
 export const createBarberSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
   workingHours: z.array(workingHoursSchema).optional().default([]),
+  unavailableDates: z.array(z.string().regex(dateOnlyRegex, 'Data inválida (YYYY-MM-DD)')).optional().default([]),
 });
 
 export type CreateBarberInput = z.infer<typeof createBarberSchema>;
@@ -110,6 +113,7 @@ export type BarberFormValues = {
     lunchEndTime?: string;
     isAvailable: boolean;
   }>;
+  unavailableDates: string[];
 };
 
 // Service validators
