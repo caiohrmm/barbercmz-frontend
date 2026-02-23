@@ -376,16 +376,16 @@ export default function BarbersPage() {
           >
             <div className="fixed inset-0 bg-zinc-900/30" aria-hidden="true" />
           </TransitionChild>
-          <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
             <TransitionChild
               enter="ease-out duration-200"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
+              enterFrom="opacity-0 scale-95 sm:translate-y-0 translate-y-4"
+              enterTo="opacity-100 scale-100 translate-y-0"
               leave="ease-in duration-150"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+              leaveFrom="opacity-100 scale-100 translate-y-0"
+              leaveTo="opacity-0 scale-95 sm:translate-y-0 translate-y-4"
             >
-              <DialogPanel className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl">
+              <DialogPanel className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-t-2xl border border-zinc-200 bg-white p-4 shadow-xl sm:rounded-2xl sm:p-6 [color-scheme:light]">
                 <DialogTitle className="text-lg font-semibold text-zinc-900">
                   {editingBarber ? 'Editar barbeiro' : 'Novo barbeiro'}
                 </DialogTitle>
@@ -412,10 +412,10 @@ export default function BarbersPage() {
                       <ClockIcon className="h-4 w-4" aria-hidden />
                       Horários de trabalho
                     </div>
-                    <p className="mt-0.5 text-xs text-zinc-500">
+                    <p className="mt-0.5 text-xs text-zinc-600">
                       Por dia: início e fim. Opcional: horário de almoço (não aparecerá para agendamento).
                     </p>
-                    <div className="mt-3 max-h-[40vh] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3">
+                    <div className="mt-3 max-h-[45vh] min-h-0 space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-100/80 p-3">
                       {workingHoursFields.map((field, index) => (
                         <div
                           key={field.id}
@@ -425,44 +425,44 @@ export default function BarbersPage() {
                             <input
                               type="checkbox"
                               {...register(`workingHours.${index}.isAvailable`)}
-                              className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                              className="h-5 w-5 shrink-0 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
                             />
                             <span className="font-medium text-zinc-800">
                               {DAY_NAMES[field.dayOfWeek]}
                             </span>
                           </label>
-                          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <div className="mt-3 grid grid-cols-2 gap-3">
                             <div>
-                              <label className="text-xs text-zinc-500">Início</label>
+                              <label className="block text-xs font-medium text-zinc-700">Início</label>
                               <input
                                 type="time"
                                 {...register(`workingHours.${index}.startTime`)}
-                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-zinc-500">Fim</label>
+                              <label className="block text-xs font-medium text-zinc-700">Fim</label>
                               <input
                                 type="time"
                                 {...register(`workingHours.${index}.endTime`)}
-                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-zinc-500">Almoço início</label>
+                              <label className="block text-xs font-medium text-zinc-700">Almoço início</label>
                               <input
                                 type="time"
                                 {...register(`workingHours.${index}.lunchStartTime`)}
-                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                                 placeholder="—"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-zinc-500">Almoço fim</label>
+                              <label className="block text-xs font-medium text-zinc-700">Almoço fim</label>
                               <input
                                 type="time"
                                 {...register(`workingHours.${index}.lunchEndTime`)}
-                                className="mt-0.5 w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                                 placeholder="—"
                               />
                             </div>
@@ -484,7 +484,7 @@ export default function BarbersPage() {
                       <CalendarDaysIcon className="h-4 w-4" aria-hidden />
                       Dias sem atendimento
                     </div>
-                    <p className="mt-0.5 text-xs text-zinc-500">
+                    <p className="mt-0.5 text-xs text-zinc-600">
                       Feriados, folgas: o cliente não poderá agendar nestas datas para este barbeiro.
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -492,13 +492,13 @@ export default function BarbersPage() {
                         type="date"
                         value={newUnavailableDate}
                         onChange={(e) => setNewUnavailableDate(e.target.value)}
-                        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="min-h-[44px] flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 [color-scheme:light]"
                         aria-label="Adicionar data"
                       />
                       <button
                         type="button"
                         onClick={handleAddUnavailableDate}
-                        className="rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="min-h-[44px] rounded-lg bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         Adicionar
                       </button>
@@ -508,9 +508,9 @@ export default function BarbersPage() {
                         {unavailableDatesFields.map((field, index) => (
                           <li
                             key={field.id}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2 text-sm"
+                            className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-100/80 px-3 py-2.5 text-sm text-zinc-900"
                           >
-                            <span className="font-medium text-zinc-800">
+                            <span className="font-medium">
                               {new Date(watch(`unavailableDates.${index}`) + 'T12:00:00').toLocaleDateString('pt-BR', {
                                 weekday: 'short',
                                 day: '2-digit',
@@ -521,10 +521,10 @@ export default function BarbersPage() {
                             <button
                               type="button"
                               onClick={() => removeUnavailableDate(index)}
-                              className="rounded p-1 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="min-h-[44px] min-w-[44px] rounded p-2 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                               aria-label="Remover data"
                             >
-                              <XMarkIcon className="h-4 w-4" aria-hidden />
+                              <XMarkIcon className="h-5 w-5" aria-hidden />
                             </button>
                           </li>
                         ))}
@@ -532,7 +532,7 @@ export default function BarbersPage() {
                     )}
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
                     <button
                       type="button"
                       onClick={closeForm}
