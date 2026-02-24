@@ -39,6 +39,20 @@ export const createBarbershopStep2Schema = z
 export type CreateBarbershopStep1Input = z.infer<typeof createBarbershopStep1Schema>;
 export type CreateBarbershopStep2Input = z.infer<typeof createBarbershopStep2Schema>;
 
+// Settings: edit barbershop (name + slug; slug must be unique on server)
+export const updateBarbershopSettingsSchema = z.object({
+  name: z
+    .string()
+    .min(3, 'Nome deve ter no mínimo 3 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  slug: z
+    .string()
+    .min(3, 'Endereço da página deve ter no mínimo 3 caracteres')
+    .max(50, 'Máximo 50 caracteres')
+    .regex(slugRegex, 'Apenas letras minúsculas, números e hífens'),
+});
+export type UpdateBarbershopSettingsInput = z.infer<typeof updateBarbershopSettingsSchema>;
+
 // Appointment validators (public page)
 export const createAppointmentSchema = z.object({
   barbershopId: z.string().min(1, 'ID da barbearia é obrigatório'),

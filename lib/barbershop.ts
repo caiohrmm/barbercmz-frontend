@@ -45,6 +45,31 @@ export async function getBarbershopById(barbershopId: string): Promise<Barbersho
   return data;
 }
 
+export interface UpdateBarbershopPayload {
+  name?: string;
+  slug?: string;
+}
+
+export interface UpdateBarbershopResponse {
+  message: string;
+  barbershop: Barbershop;
+}
+
+/**
+ * Update barbershop name and/or slug (owner only).
+ * Slug must be unique; backend returns 409 if slug is already used by another barbershop.
+ */
+export async function updateBarbershop(
+  barbershopId: string,
+  payload: UpdateBarbershopPayload
+): Promise<UpdateBarbershopResponse> {
+  const { data } = await api.patch<UpdateBarbershopResponse>(
+    `/barbershops/${barbershopId}`,
+    payload
+  );
+  return data;
+}
+
 export interface UploadLogoResponse {
   message: string;
   barbershop: Barbershop;
