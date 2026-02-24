@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Script from 'next/script';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Transition } from '@headlessui/react';
@@ -13,7 +14,6 @@ import {
   CheckCircleIcon,
   CalendarDaysIcon,
   ScissorsIcon,
-  DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import type { Barbershop, Service } from '@/types';
@@ -21,12 +21,13 @@ import type { AvailableSlot, PublicBarber } from '@/lib/public-api';
 import {
   getPublicBarbers,
   getAvailableSlots,
-  requestAppointmentVerification,
-  verifyAppointment,
+  createAppointment,
 } from '@/lib/public-api';
 import { bookingCustomerSchema, type BookingCustomerInput } from '@/lib/validators';
 import { addDays, format, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '';
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
@@ -72,12 +73,12 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [smsCode, setSmsCode] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [slotsError, setSlotsError] = useState(false);
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const captchaContainerRef = useRef<HTMLDivElement>(null);
+  const captchaWidgetIdRef = useRef<number | null>(null);
   const [lastBookingSummary, setLastBookingSummary] = useState<{
     serviceName: string;
     date: string;
@@ -161,67 +162,74 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
     };
   }, [barbershop.id, selectedService?.id, selectedDate, selectedBarber?.id, hasBarberStep]);
 
+  useEffect(() => {
+    if (!RECAPTCHA_SITE_KEY) return;
+    (window as unknown as { __recaptchaLoaded?: () => void }).__recaptchaLoaded = () => setCaptchaReady(true);
+    return () => {
+      delete (window as unknown as { __recaptchaLoaded?: () => void }).__recaptchaLoaded;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!RECAPTCHA_SITE_KEY || !captchaReady || !captchaContainerRef.current) return;
+    const g = (window as unknown as { grecaptcha?: { render: (el: HTMLElement, opts: { sitekey: string }) => number; getResponse: (id: number) => string; reset: (id?: number) => void } }).grecaptcha;
+    if (!g) return;
+    if (captchaWidgetIdRef.current != null) return;
+    captchaWidgetIdRef.current = g.render(captchaContainerRef.current, { sitekey: RECAPTCHA_SITE_KEY });
+  }, [captchaReady]);
+
   const onConfirmBooking = handleSubmit(async (data) => {
     if (!selectedService || !selectedDate || !selectedSlot) return;
+    if (!RECAPTCHA_SITE_KEY) {
+      setSubmitError('Captcha não configurado. Não é possível agendar.');
+      return;
+    }
+    const g = (window as unknown as { grecaptcha?: { getResponse: (id: number) => string; reset: (id?: number) => void } }).grecaptcha;
+    const token = g && captchaWidgetIdRef.current != null ? g.getResponse(captchaWidgetIdRef.current) : '';
+    if (!token) {
+      setSubmitError('Marque o captcha para continuar.');
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError(null);
     try {
       const startTime = new Date(`${selectedDate}T${selectedSlot.time}:00`).toISOString();
-      const res = await requestAppointmentVerification({
+      const res = await createAppointment({
         barbershopId: barbershop.id,
         barberId: selectedSlot.barberId,
         serviceId: selectedService.id,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         startTime,
+        captchaToken: token,
       });
-      setVerificationId(res.verificationId);
-      setSmsCode('');
+      if (RECAPTCHA_SITE_KEY && g && captchaWidgetIdRef.current != null) {
+        g.reset(captchaWidgetIdRef.current);
+      }
+      setLastBookingSummary({
+        serviceName: selectedService.name,
+        date: format(new Date(selectedDate + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR }),
+        time: selectedSlot.time,
+        barberName: selectedSlot.barberName,
+        appointmentId: res.appointment?.id?.slice(-6),
+      });
+      setSubmitSuccess(true);
+      reset();
     } catch (err) {
       const message =
-        err instanceof Error && (err as Error & { message?: string }).message
+        err instanceof Error && (err as Error).message
           ? (err as Error).message
-          : 'Não foi possível enviar o código. Tente novamente.';
+          : 'Não foi possível agendar. Tente novamente.';
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
   });
 
-  const onVerifyCode = async () => {
-    if (!verificationId || smsCode.length !== 6) return;
-    setIsVerifying(true);
-    setSubmitError(null);
-    try {
-      const res = await verifyAppointment(verificationId, smsCode);
-      setLastBookingSummary({
-        serviceName: selectedService!.name,
-        date: format(new Date(selectedDate! + 'T12:00:00'), "EEEE, d 'de' MMMM", { locale: ptBR }),
-        time: selectedSlot!.time,
-        barberName: selectedSlot!.barberName,
-        appointmentId: res.appointment?.id?.slice(-6),
-      });
-      setSubmitSuccess(true);
-      setVerificationId(null);
-      setSmsCode('');
-      reset();
-    } catch (err) {
-      const message =
-        err instanceof Error && (err as Error & { message?: string }).message
-          ? (err as Error).message
-          : 'Código inválido ou expirado. Tente novamente.';
-      setSubmitError(message);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   const handleAgendarOutro = () => {
     setSubmitSuccess(false);
     setSubmitError(null);
     setLastBookingSummary(null);
-    setVerificationId(null);
-    setSmsCode('');
     setSelectedService(null);
     setSelectedBarber(barbers.length === 1 ? barbers[0] : null);
     setSelectedDate(null);
@@ -695,77 +703,6 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
               {((hasBarberStep && selectedTabIndex === 4) || (!hasBarberStep && selectedTabIndex === 3)) && (
                 <>
                   {selectedService && selectedDate && selectedSlot ? (
-                    verificationId ? (
-                      /* Confirmação por SMS */
-                      <section aria-labelledby="sms-heading">
-                        <h2 id="sms-heading" className="mb-3 text-base font-medium text-zinc-800">
-                          Confirme por SMS
-                        </h2>
-                        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-                          <p className="mb-3 text-sm text-zinc-700">
-                            Enviamos um código de 6 dígitos para o número informado. Digite abaixo para confirmar o agendamento.
-                          </p>
-                          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                            <p className="font-medium">Por que pedimos isso?</p>
-                            <p className="mt-1">
-                              Para evitar agendamentos falsos ou de má-fé. Quem usar o sistema de forma maliciosa (por exemplo, para atrapalhar) poderá ser bloqueado.
-                            </p>
-                          </div>
-                          {submitError && (
-                            <div
-                              className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-                              role="alert"
-                            >
-                              {submitError}
-                            </div>
-                          )}
-                          <label htmlFor="sms-code" className="block text-sm font-medium text-zinc-700">
-                            Código recebido por SMS
-                          </label>
-                          <input
-                            id="sms-code"
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            maxLength={6}
-                            value={smsCode}
-                            onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            placeholder="000000"
-                            disabled={isVerifying}
-                            className="mt-2 w-full rounded-xl border border-zinc-300 py-3.5 px-4 text-center text-xl tracking-[0.4em] text-zinc-900 placeholder-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-                            aria-describedby="sms-code-hint"
-                          />
-                          <p id="sms-code-hint" className="mt-1 text-xs text-zinc-500">
-                            Código válido por 10 minutos
-                          </p>
-                          <button
-                            type="button"
-                            onClick={onVerifyCode}
-                            disabled={smsCode.length !== 6 || isVerifying}
-                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 px-4 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-70"
-                          >
-                            {isVerifying ? (
-                              <>
-                                <ArrowPathIcon className="h-5 w-5 animate-spin" aria-hidden />
-                                Confirmando...
-                              </>
-                            ) : (
-                              <>
-                                <DevicePhoneMobileIcon className="h-5 w-5" aria-hidden />
-                                Confirmar agendamento
-                              </>
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setVerificationId(null); setSubmitError(null); }}
-                            className="mt-3 w-full text-sm font-medium text-zinc-600 hover:text-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded-lg py-2"
-                          >
-                            Voltar e alterar dados
-                          </button>
-                        </div>
-                      </section>
-                    ) : (
               <section aria-labelledby="customer-heading">
                 <h2 id="customer-heading" className="mb-3 text-base font-medium text-zinc-800">
                   {hasBarberStep ? '5. Dados' : '4. Dados'}
@@ -845,9 +782,18 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                         Com DDD. Celular: (11) 99999-9999 · Fixo: (11) 3333-3333
                       </p>
                     </div>
+                    {RECAPTCHA_SITE_KEY && (
+                      <>
+                        <Script
+                          src="https://www.google.com/recaptcha/api.js?onload=__recaptchaLoaded&render=explicit"
+                          strategy="lazyOnload"
+                        />
+                        <div className="flex justify-center" ref={captchaContainerRef} />
+                      </>
+                    )}
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || (!!RECAPTCHA_SITE_KEY && !captchaReady)}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 px-4 font-semibold text-white shadow-lg shadow-amber-500/25 hover:from-amber-500 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-70"
                     >
                       {isSubmitting ? (
@@ -862,7 +808,6 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
                   </form>
                 </div>
               </section>
-                    )
                   ) : (
                     <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center">
                       <UserCircleIcon className="mx-auto h-12 w-12 text-zinc-300" aria-hidden />

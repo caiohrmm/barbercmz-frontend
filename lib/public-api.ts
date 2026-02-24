@@ -104,6 +104,11 @@ export interface CreateAppointmentPayload {
   startTime: string; // ISO 8601
 }
 
+/** Payload para criar agendamento (exige captcha no backend). */
+export interface CreateAppointmentWithCaptchaPayload extends CreateAppointmentPayload {
+  captchaToken: string;
+}
+
 export interface CreateAppointmentResponse {
   appointment: {
     id: string;
@@ -166,11 +171,11 @@ export async function verifyAppointment(
 }
 
 /**
- * Create appointment (public, no auth). Rate limited on backend.
- * Prefer requestAppointmentVerification + verifyAppointment for SMS flow.
+ * Create appointment (public, no auth). Requires captcha token. Rate limited on backend.
+ * SMS flow (requestAppointmentVerification + verifyAppointment) is kept for future use.
  */
 export async function createAppointment(
-  payload: CreateAppointmentPayload
+  payload: CreateAppointmentWithCaptchaPayload
 ): Promise<CreateAppointmentResponse> {
   const baseUrl = getBaseUrl();
   const res = await fetch(`${baseUrl}/appointments`, {
