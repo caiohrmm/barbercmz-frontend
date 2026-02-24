@@ -1,4 +1,7 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/';
+/** API base URL. No deploy (Vercel), use NEXT_PUBLIC_API_URL ou este fallback em produção. */
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production' ? 'https://barbercmz.onrender.com/' : 'http://localhost:4000/');
 
 export const ROUTES = {
   HOME: '/',
