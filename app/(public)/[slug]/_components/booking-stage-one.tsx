@@ -55,7 +55,9 @@ function formatPhoneMask(value: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
 }
 
-const NEXT_DAYS = 21;
+/** Máximo de dias à frente para agendamento (hoje + 20 = 21 dias selecionáveis). */
+const MAX_DAYS_AHEAD = 20;
+const NEXT_DAYS = MAX_DAYS_AHEAD + 1;
 
 interface BookingStageOneProps {
   barbershop: Barbershop;
@@ -102,7 +104,7 @@ export function BookingStageOne({ barbershop, services }: BookingStageOneProps) 
 
   const today = new Date();
   const minDateStr = format(today, 'yyyy-MM-dd');
-  const maxDateStr = format(addDays(today, NEXT_DAYS - 1), 'yyyy-MM-dd');
+  const maxDateStr = format(addDays(today, MAX_DAYS_AHEAD), 'yyyy-MM-dd');
 
   useEffect(() => {
     let cancelled = false;
