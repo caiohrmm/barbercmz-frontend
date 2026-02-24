@@ -126,6 +126,7 @@ export default function BarbersPage() {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<BarberFormValues>({
     resolver: zodResolver(createBarberSchema) as Resolver<BarberFormValues>,
@@ -133,10 +134,15 @@ export default function BarbersPage() {
   });
 
   const { fields: workingHoursFields } = useFieldArray({ control, name: 'workingHours' });
-  const { fields: unavailableDatesFields, append: appendUnavailableDate, remove: removeUnavailableDate } = useFieldArray({
-    control,
-    name: 'unavailableDates',
-  });
+  const unavailableDatesList = watch('unavailableDates') ?? [];
+  const appendUnavailableDate = (dateStr: string) => {
+    const current = watch('unavailableDates') ?? [];
+    setValue('unavailableDates', [...current, dateStr]);
+  };
+  const removeUnavailableDate = (index: number) => {
+    const current = watch('unavailableDates') ?? [];
+    setValue('unavailableDates', current.filter((_, i) => i !== index));
+  };
 
   const [newUnavailableDate, setNewUnavailableDate] = useState('');
 
@@ -503,15 +509,15 @@ export default function BarbersPage() {
                         Adicionar
                       </button>
                     </div>
-                    {unavailableDatesFields.length > 0 && (
+                    {unavailableDatesList.length > 0 && (
                       <ul className="mt-2 space-y-1">
-                        {unavailableDatesFields.map((field, index) => (
+                        {unavailableDatesList.map((dateStr, index) => (
                           <li
-                            key={field.id}
+                            key={`${dateStr}-${index}`}
                             className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-zinc-100/80 px-3 py-2.5 text-sm text-zinc-900"
                           >
                             <span className="font-medium">
-                              {new Date(watch(`unavailableDates.${index}`) + 'T12:00:00').toLocaleDateString('pt-BR', {
+                              {new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', {
                                 weekday: 'short',
                                 day: '2-digit',
                                 month: 'short',
