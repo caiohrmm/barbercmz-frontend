@@ -24,6 +24,29 @@ export interface Plan {
   updatedAt: string;
 }
 
+export type SubscriptionStatus = 'active' | 'suspended' | 'cancelled' | 'trial';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  priceMonthly: number;
+  maxBarbers: number;
+  features: string[];
+}
+
+export interface CurrentSubscription {
+  id: string;
+  status: SubscriptionStatus;
+  trialEndsAt: string | null;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  plan: SubscriptionPlan;
+}
+
+export interface SubscriptionMeResponse {
+  subscription: CurrentSubscription | null;
+}
+
 export interface Barbershop {
   id: string;
   name: string;

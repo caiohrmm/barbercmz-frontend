@@ -12,11 +12,13 @@ import {
   BanknotesIcon,
   Cog6ToothIcon,
   ChevronRightIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments } from '@/lib/appointments';
 import { getBarbershopById } from '@/lib/barbershop';
+import { getCurrentSubscription, formatSubscriptionBadge, getTrialDaysLeft } from '@/lib/subscriptions';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -36,6 +38,16 @@ export default function DashboardPage() {
     queryFn: () => getBarbershopById(barbershopId!),
     enabled: !!barbershopId,
   });
+
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['subscription', 'me'],
+    queryFn: getCurrentSubscription,
+    enabled: !!barbershopId,
+  });
+  const subscription = subscriptionData?.subscription ?? null;
+  const trialDaysLeft = getTrialDaysLeft(subscription);
+  const showTrialWarning = trialDaysLeft !== null && trialDaysLeft <= 7;
+  const showSuspendedWarning = subscription?.status === 'suspended' || subscription?.status === 'cancelled';
 
   const { data: todayData } = useQuery({
     queryKey: ['appointments', 'today', todayStart, todayEnd],
@@ -89,6 +101,31 @@ export default function DashboardPage() {
           </h2>
         </div>
       </div>
+
+      {(showTrialWarning || showSuspendedWarning) && (
+        <Link
+          href="/dashboard/billing"
+          className="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+        >
+          <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+          <span className="flex-1">
+            {showSuspendedWarning
+              ? 'Sua assinatura está suspensa. Regularize em Faturamento.'
+              : `Seu trial termina em ${trialDaysLeft} ${trialDaysLeft === 1 ? 'dia' : 'dias'}. Faça upgrade para continuar.`}
+          </span>
+          <ChevronRightIcon className="h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+        </Link>
+      )}
+
+      {subscription && !showTrialWarning && !showSuspendedWarning && (
+        <Link
+          href="/dashboard/billing"
+          className="mb-4 flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+        >
+          <span>{formatSubscriptionBadge(subscription)}</span>
+          <ChevronRightIcon className="h-4 w-4 text-zinc-400" aria-hidden />
+        </Link>
+      )}
 
       <Link
         href="/dashboard/agenda"

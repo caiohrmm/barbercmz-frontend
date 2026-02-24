@@ -4,14 +4,15 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { useQuery } from '@tanstack/react-query';
 import {
-  BanknotesIcon,
   UserGroupIcon,
   ChevronRightIcon,
   CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { getBarbershopById } from '@/lib/barbershop';
 import { getPlans } from '@/lib/plans';
 import { getBarbers } from '@/lib/barbers';
+import { getCurrentSubscription, formatSubscriptionBadge, getTrialDaysLeft } from '@/lib/subscriptions';
 import type { Plan } from '@/types';
 
 function formatPrice(value: number): string {
@@ -42,14 +43,25 @@ export default function BillingPage() {
     enabled: !!barbershopId,
   });
 
-  const currentPlan: Plan | undefined = barbershop?.planId
-    ? plans.find((p) => p.id === barbershop.planId)
-    : undefined;
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['subscription', 'me'],
+    queryFn: getCurrentSubscription,
+    enabled: !!barbershopId,
+  });
+  const subscription = subscriptionData?.subscription ?? null;
+  const currentPlan: Plan | undefined = subscription?.plan
+    ? { ...subscription.plan, active: true, createdAt: '', updatedAt: '' }
+    : barbershop?.planId
+      ? plans.find((p) => p.id === barbershop.planId)
+      : undefined;
   const maxBarbers = barbershop?.maxBarbers ?? 1;
+  const trialDaysLeft = getTrialDaysLeft(subscription);
+  const showTrialWarning = trialDaysLeft !== null && trialDaysLeft <= 7;
   const activeBarbers = barbers.filter((b) => b.active);
   const barberCount = activeBarbers.length;
 
   const isLoading = loadingBarbershop || loadingPlans || loadingBarbers;
+  const subscriptionBadge = formatSubscriptionBadge(subscription);
 
   if (!barbershopId) {
     return (
@@ -82,14 +94,40 @@ export default function BillingPage() {
         Todos os planos incluem 30 dias grátis para demonstração do sistema.
       </p>
 
+      {showTrialWarning && (
+        <div
+          className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="alert"
+        >
+          <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+          <p>
+            <strong>Seu trial termina em {trialDaysLeft} {trialDaysLeft === 1 ? 'dia' : 'dias'}.</strong>
+            {' '}Faça upgrade para continuar usando o sistema sem interrupções.
+          </p>
+        </div>
+      )}
+
       {/* Plano atual */}
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-800">Plano atual</h2>
         {barbershop && (
           <div className="mt-3 space-y-2">
-            <p className="font-medium text-zinc-900">
-              {currentPlan ? currentPlan.name : 'Plano gratuito'}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium text-zinc-900">
+                {currentPlan ? currentPlan.name : 'Plano gratuito'}
+              </p>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  subscription?.status === 'trial'
+                    ? 'bg-amber-100 text-amber-800'
+                    : subscription?.status === 'suspended' || subscription?.status === 'cancelled'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-green-100 text-green-800'
+                }`}
+              >
+                {subscriptionBadge}
+              </span>
+            </div>
             {currentPlan && (
               <p className="text-sm text-zinc-500">
                 {formatPrice(currentPlan.priceMonthly)}/mês
