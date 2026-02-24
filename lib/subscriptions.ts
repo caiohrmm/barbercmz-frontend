@@ -11,6 +11,16 @@ export async function getCurrentSubscription(): Promise<SubscriptionMeResponse> 
   return data;
 }
 
+/**
+ * Change plan (upgrade/downgrade). Owner only. On downgrade, backend may return 400 if barber count exceeds new plan limit.
+ */
+export async function updatePlan(planId: string): Promise<SubscriptionMeResponse> {
+  const { data } = await api.patch<SubscriptionMeResponse>('/subscriptions/me/plan', {
+    planId,
+  });
+  return data;
+}
+
 /** Label for subscription status badge. */
 export function formatSubscriptionBadge(subscription: CurrentSubscription | null): string {
   if (!subscription) return 'Sem assinatura';
