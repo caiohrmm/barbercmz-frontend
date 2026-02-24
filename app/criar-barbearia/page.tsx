@@ -104,10 +104,10 @@ export default function CriarBarbeariaPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const slug = step1Data.slug?.trim() || slugFromName(step1Data.name);
+      const slugValue = step1Data.slug?.trim();
       await createBarbershop({
         name: step1Data.name.trim(),
-        slug: slug || undefined,
+        slug: slugValue ? slugValue : undefined,
         planId,
         ownerName: step2Data.ownerName.trim(),
         ownerEmail: step2Data.ownerEmail.trim().toLowerCase(),
