@@ -121,6 +121,19 @@ export interface Appointment {
   customer?: { id: string; name: string; phone: string };
 }
 
+export type PaymentStatus = 'paid' | 'pending' | 'failed' | 'refunded';
+export type PaymentMethod = 'pix' | 'card' | 'boleto';
+
+export interface Payment {
+  id: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paymentMethod: PaymentMethod;
+  paidAt: string | null;
+  createdAt: string;
+}
+
 export interface ApiError {
   error: string;
   message?: string;

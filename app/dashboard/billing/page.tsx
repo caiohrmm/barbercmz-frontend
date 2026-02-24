@@ -2,17 +2,22 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/auth-provider';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   UserGroupIcon,
   ChevronRightIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
+  BanknotesIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { getBarbershopById } from '@/lib/barbershop';
 import { getPlans } from '@/lib/plans';
 import { getBarbers } from '@/lib/barbers';
 import { getCurrentSubscription, formatSubscriptionBadge, getTrialDaysLeft } from '@/lib/subscriptions';
+import { getPayments, createMockPayment } from '@/lib/payments';
 import type { Plan } from '@/types';
 
 function formatPrice(value: number): string {
@@ -20,6 +25,25 @@ function formatPrice(value: number): string {
     style: 'currency',
     currency: 'BRL',
   }).format(value);
+}
+
+function formatPaymentStatus(status: string): string {
+  const labels: Record<string, string> = {
+    paid: 'Pago',
+    pending: 'Pendente',
+    failed: 'Falhou',
+    refunded: 'Reembolsado',
+  };
+  return labels[status] ?? status;
+}
+
+function formatPaymentMethod(method: string): string {
+  const labels: Record<string, string> = {
+    card: 'Cartão',
+    pix: 'PIX',
+    boleto: 'Boleto',
+  };
+  return labels[method] ?? method;
 }
 
 export default function BillingPage() {
@@ -59,9 +83,26 @@ export default function BillingPage() {
   const showTrialWarning = trialDaysLeft !== null && trialDaysLeft <= 7;
   const activeBarbers = barbers.filter((b) => b.active);
   const barberCount = activeBarbers.length;
+  const isOwner = user?.role === 'owner';
+
+  const { data: paymentsData, isLoading: loadingPayments } = useQuery({
+    queryKey: ['payments', 'me'],
+    queryFn: getPayments,
+    enabled: !!barbershopId && isOwner,
+  });
+  const payments = paymentsData?.payments ?? [];
+
+  const queryClient = useQueryClient();
+  const mockPaymentMutation = useMutation({
+    mutationFn: createMockPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', 'me'] });
+    },
+  });
 
   const isLoading = loadingBarbershop || loadingPlans || loadingBarbers;
   const subscriptionBadge = formatSubscriptionBadge(subscription);
+  const isDev = process.env.NODE_ENV === 'development';
 
   if (!barbershopId) {
     return (
@@ -128,6 +169,19 @@ export default function BillingPage() {
                 {subscriptionBadge}
               </span>
             </div>
+            {subscription && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-600">
+                <span className="flex items-center gap-1.5">
+                  <CalendarDaysIcon className="h-4 w-4 text-zinc-400" aria-hidden />
+                  Período: {format(parseISO(subscription.currentPeriodStart), 'dd/MM/yyyy', { locale: ptBR })} – {format(parseISO(subscription.currentPeriodEnd), 'dd/MM/yyyy', { locale: ptBR })}
+                </span>
+                {subscription.status === 'trial' && subscription.trialEndsAt && (
+                  <span className="text-amber-700">
+                    Trial até {format(parseISO(subscription.trialEndsAt), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                )}
+              </div>
+            )}
             {currentPlan && (
               <p className="text-sm text-zinc-500">
                 {formatPrice(currentPlan.priceMonthly)}/mês
@@ -218,6 +272,74 @@ export default function BillingPage() {
           </ul>
         )}
       </section>
+
+      {/* Histórico de pagamentos (owner) */}
+      {isOwner && (
+        <section className="mt-6 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+            <h2 className="text-sm font-semibold text-zinc-800">Histórico de pagamentos</h2>
+            {isDev && (
+              <button
+                type="button"
+                onClick={() => mockPaymentMutation.mutate()}
+                disabled={mockPaymentMutation.isPending}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-60"
+              >
+                {mockPaymentMutation.isPending ? 'Criando…' : '+ Pagamento de teste'}
+              </button>
+            )}
+          </div>
+          {loadingPayments ? (
+            <div className="flex justify-center py-8">
+              <div
+                className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"
+                aria-hidden
+              />
+            </div>
+          ) : payments.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <BanknotesIcon className="mx-auto h-10 w-10 text-zinc-300" aria-hidden />
+              <p className="mt-2 text-sm font-medium text-zinc-600">Nenhum pagamento registrado</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                Quando houver faturas ou cobranças, elas aparecerão aqui.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-zinc-100">
+              {payments.map((payment) => (
+                <li key={payment.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-zinc-900">
+                      {formatPrice(payment.amount)}
+                      <span className="ml-1.5 text-xs font-normal text-zinc-500">
+                        {formatPaymentMethod(payment.paymentMethod)}
+                      </span>
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {payment.paidAt
+                        ? format(parseISO(payment.paidAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                        : format(parseISO(payment.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      payment.status === 'paid'
+                        ? 'bg-green-100 text-green-800'
+                        : payment.status === 'pending'
+                          ? 'bg-amber-100 text-amber-800'
+                          : payment.status === 'failed'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-zinc-100 text-zinc-600'
+                    }`}
+                  >
+                    {formatPaymentStatus(payment.status)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }
