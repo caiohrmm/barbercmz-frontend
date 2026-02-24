@@ -22,13 +22,14 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const hasRedirected = useRef(false);
 
-  const { data: subscriptionData } = useQuery({
+  const { data: subscriptionData, isLoading: loadingSubscription } = useQuery({
     queryKey: ['subscription', 'me'],
     queryFn: getCurrentSubscription,
     enabled: isAuthenticated === true,
   });
   const subscription = subscriptionData?.subscription ?? null;
-  const expired = isSubscriptionExpired(subscription);
+  const expired =
+    !loadingSubscription && isSubscriptionExpired(subscription);
   const isBillingPath = BILLING_ALLOWED_PATHS.some((p) => pathname === p || pathname?.startsWith(p + '/'));
 
   useEffect(() => {
