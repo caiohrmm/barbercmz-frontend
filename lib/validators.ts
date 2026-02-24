@@ -8,6 +8,37 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// Create barbershop (wizard)
+const slugRegex = /^[a-z0-9-]+$/;
+export const createBarbershopStep1Schema = z.object({
+  name: z
+    .string()
+    .min(3, 'Nome deve ter no mínimo 3 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  slug: z
+    .string()
+    .max(50, 'Máximo 50 caracteres')
+    .regex(slugRegex, 'Apenas letras minúsculas, números e hífens')
+    .optional()
+    .or(z.literal('')),
+});
+export const createBarbershopStep2Schema = z
+  .object({
+    ownerName: z
+      .string()
+      .min(3, 'Nome deve ter no mínimo 3 caracteres')
+      .max(100, 'Nome deve ter no máximo 100 caracteres'),
+    ownerEmail: z.string().email('Email inválido'),
+    ownerPassword: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+    ownerPasswordConfirm: z.string().min(1, 'Confirme a senha'),
+  })
+  .refine((data) => data.ownerPassword === data.ownerPasswordConfirm, {
+    message: 'As senhas não coincidem',
+    path: ['ownerPasswordConfirm'],
+  });
+export type CreateBarbershopStep1Input = z.infer<typeof createBarbershopStep1Schema>;
+export type CreateBarbershopStep2Input = z.infer<typeof createBarbershopStep2Schema>;
+
 // Appointment validators (public page)
 export const createAppointmentSchema = z.object({
   barbershopId: z.string().min(1, 'ID da barbearia é obrigatório'),

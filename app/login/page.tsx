@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Transition } from '@headlessui/react';
@@ -19,9 +19,17 @@ import { ROUTES } from '@/lib/constants';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('criado') === '1') {
+      setSuccessMessage('Barbearia criada! Faça login com o email e senha que você cadastrou.');
+    }
+  }, [searchParams]);
 
   const {
     register,
@@ -77,6 +85,14 @@ export default function LoginPage() {
 
           {/* Card */}
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-xl backdrop-blur sm:p-8">
+            {successMessage && (
+              <div
+                className="mb-6 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200"
+                role="status"
+              >
+                {successMessage}
+              </div>
+            )}
             {/* Error alert - Headless UI Transition */}
             <Transition
               show={!!error}

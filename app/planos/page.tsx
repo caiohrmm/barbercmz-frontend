@@ -112,7 +112,7 @@ export default function PlanosPage() {
                   </ul>
                 )}
                 <Link
-                  href={ROUTES.LOGIN}
+                  href={ROUTES.CRIAR_BARBEARIA}
                   className="mt-6 block w-full rounded-xl bg-amber-500 py-3 text-center text-sm font-semibold text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
                 >
                   Começar com 30 dias grátis

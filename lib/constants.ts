@@ -6,6 +6,7 @@ export const API_URL =
 export const ROUTES = {
   HOME: '/',
   PLANOS: '/planos',
+  CRIAR_BARBEARIA: '/criar-barbearia',
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
   DASHBOARD_AGENDA: '/dashboard/agenda',
