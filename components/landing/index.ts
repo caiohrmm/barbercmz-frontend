@@ -1,0 +1,11 @@
+export { Navbar } from './Navbar';
+export { Hero } from './Hero';
+export { SocialProof } from './SocialProof';
+export { Benefits } from './Benefits';
+export { ProductPreview } from './ProductPreview';
+export { HowItWorks } from './HowItWorks';
+export { Testimonials } from './Testimonials';
+export { Pricing } from './Pricing';
+export { FAQ } from './FAQ';
+export { FinalCTA } from './FinalCTA';
+export { Footer } from './Footer';

@@ -7,8 +7,9 @@ import { AuthProvider } from '@/lib/providers/auth-provider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'BarberCMZ - Sistema de Agendamento',
-  description: 'Sistema de agendamento para barbearias',
+  title: 'BarberCMZ - Sistema de Agendamento para Barbearias',
+  description:
+    'Encha sua agenda e reduza faltas. Agenda inteligente, controle de clientes e bloqueio automático. 30 dias grátis, sem cartão.',
 };
 
 export default function RootLayout({
