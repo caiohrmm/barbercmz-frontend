@@ -34,3 +34,9 @@ export function getTrialDaysLeft(subscription: CurrentSubscription | null): numb
   const days = Math.ceil((end - now) / (24 * 60 * 60 * 1000));
   return days;
 }
+
+/** True when subscription is suspended or cancelled (block dashboard except billing). */
+export function isSubscriptionExpired(subscription: CurrentSubscription | null): boolean {
+  if (!subscription) return false;
+  return subscription.status === 'suspended' || subscription.status === 'cancelled';
+}
