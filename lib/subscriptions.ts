@@ -45,8 +45,18 @@ export function getTrialDaysLeft(subscription: CurrentSubscription | null): numb
   return days;
 }
 
-/** True when subscription is suspended or cancelled (block dashboard except billing). */
-export function isSubscriptionExpired(subscription: CurrentSubscription | null): boolean {
+/** Contract: only these statuses allow full dashboard access. Trial expired is treated as suspended by backend (on read). */
+const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trial'] as const;
+
+/** True when user has an active or trial subscription (allow dashboard). False = show expiration screen (except billing routes). */
+export function hasActiveOrTrialSubscription(subscription: CurrentSubscription | null): boolean {
   if (!subscription) return false;
-  return subscription.status === 'suspended' || subscription.status === 'cancelled';
+  return ACTIVE_SUBSCRIPTION_STATUSES.includes(
+    subscription.status as (typeof ACTIVE_SUBSCRIPTION_STATUSES)[number]
+  );
+}
+
+/** True when subscription is not active/trial → block dashboard and show expiration (suspended, cancelled, or no subscription). */
+export function isSubscriptionExpired(subscription: CurrentSubscription | null): boolean {
+  return !hasActiveOrTrialSubscription(subscription);
 }

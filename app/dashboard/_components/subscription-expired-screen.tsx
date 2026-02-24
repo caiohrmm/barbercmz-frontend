@@ -15,25 +15,14 @@ export function SubscriptionExpiredScreen() {
           Assinatura expirada
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Sua assinatura está suspensa ou expirada. Escolha um plano para
-          reativar e continuar usando o sistema.
+          Escolha um plano para reativar e continuar usando o sistema.
         </p>
         <Link
           href={ROUTES.DASHBOARD_BILLING_PLAN}
-          className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-medium text-white transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-medium text-white transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
         >
-          Escolher um plano
+          Escolher plano e reativar
         </Link>
-        <p className="mt-4 text-xs text-zinc-500">
-          Você também pode{' '}
-          <Link
-            href={ROUTES.DASHBOARD_BILLING}
-            className="font-medium text-amber-700 underline hover:text-amber-800"
-          >
-            ver faturamento
-          </Link>
-          .
-        </p>
       </div>
     </div>
   );
