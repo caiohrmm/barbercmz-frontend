@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/providers/auth-provider';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import {
   CalendarDaysIcon,
@@ -15,6 +16,7 @@ import {
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAppointments } from '@/lib/appointments';
+import { getBarbershopById } from '@/lib/barbershop';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -25,8 +27,15 @@ const greeting = () => {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const barbershopId = user?.barbershopId;
   const todayStart = startOfDay(new Date()).toISOString();
   const todayEnd = endOfDay(new Date()).toISOString();
+
+  const { data: barbershop } = useQuery({
+    queryKey: ['barbershop', barbershopId],
+    queryFn: () => getBarbershopById(barbershopId!),
+    enabled: !!barbershopId,
+  });
 
   const { data: todayData } = useQuery({
     queryKey: ['appointments', 'today', todayStart, todayEnd],
@@ -58,14 +67,27 @@ export default function DashboardPage() {
 
   return (
     <div className="px-4 pb-24 pt-6 sm:px-6 md:pb-8">
-      <div className="mb-6">
-        <p className="text-sm font-medium text-amber-600">
-          {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
-        </p>
-        <h2 className="mt-1 text-2xl font-bold text-zinc-900 sm:text-3xl">
-          {greeting()} 👋
-        </h2>
-        <p className="mt-0.5 text-base text-zinc-600">BarberCMZ</p>
+      <div className="mb-6 flex items-start gap-3">
+        {barbershop?.logoUrl ? (
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
+            <Image
+              src={barbershop.logoUrl}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="48px"
+            />
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-amber-600">
+            {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
+          </p>
+          <h2 className="mt-1 text-2xl font-bold text-zinc-900 sm:text-3xl">
+            {greeting()}
+            {barbershop?.name ? `, ${barbershop.name}` : ''}
+          </h2>
+        </div>
       </div>
 
       <Link
