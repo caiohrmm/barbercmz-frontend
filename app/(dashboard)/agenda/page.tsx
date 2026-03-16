@@ -31,6 +31,7 @@ import { useAuth } from '@/lib/providers/auth-provider';
 import type { Appointment, AppointmentStatus, Barber, Service } from '@/types';
 import { format, startOfDay, endOfDay, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { z } from 'zod';
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   scheduled: 'Agendado',
@@ -61,6 +62,18 @@ function formatPhoneMask(value: string): string {
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
 }
+
+type QuickAppointmentFormValues = BookingCustomerInput & {
+  serviceId: string;
+  barberId: string;
+  time: string;
+};
+
+const quickAppointmentSchema = bookingCustomerSchema.extend({
+  serviceId: z.string().min(1, 'Selecione um serviço'),
+  barberId: z.string().min(1, 'Selecione um barbeiro'),
+  time: z.string().min(1, 'Informe o horário'),
+});
 
 export default function AgendaPage() {
   const queryClient = useQueryClient();
@@ -101,8 +114,8 @@ export default function AgendaPage() {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<BookingCustomerInput & { serviceId: string; barberId: string; time: string }>({
-    resolver: zodResolver(bookingCustomerSchema),
+  } = useForm<QuickAppointmentFormValues>({
+    resolver: zodResolver(quickAppointmentSchema),
     defaultValues: {
       customerName: '',
       customerPhone: '',
@@ -113,7 +126,7 @@ export default function AgendaPage() {
   });
 
   const createAppointment = useMutation({
-    mutationFn: async (values: BookingCustomerInput & { serviceId: string; barberId: string; time: string }) => {
+    mutationFn: async (values: QuickAppointmentFormValues) => {
       if (!user?.barbershopId) {
         throw new Error('Barbearia não encontrada na sessão.');
       }
