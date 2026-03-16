@@ -33,3 +33,22 @@ export async function updateAppointmentStatus(
   );
   return data;
 }
+
+export interface CreateInternalAppointmentInput {
+  barbershopId: string;
+  barberId: string;
+  serviceId: string;
+  customerName: string;
+  customerPhone: string;
+  startTime: string; // ISO
+}
+
+export async function createInternalAppointment(
+  input: CreateInternalAppointmentInput
+): Promise<{ message: string; appointment: Appointment }> {
+  const { data } = await api.post<{ message: string; appointment: Appointment }>(
+    '/appointments/internal',
+    input
+  );
+  return data;
+}

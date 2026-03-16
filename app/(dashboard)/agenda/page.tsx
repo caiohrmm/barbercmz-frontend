@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Listbox,
@@ -18,10 +20,15 @@ import {
   UserIcon,
   PhoneIcon,
   ClockIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { getAppointments, updateAppointmentStatus } from '@/lib/appointments';
-import type { Appointment, AppointmentStatus } from '@/types';
+import { getAppointments, updateAppointmentStatus, createInternalAppointment } from '@/lib/appointments';
+import { getServices } from '@/lib/services';
+import { getBarbers } from '@/lib/barbers';
+import { bookingCustomerSchema, type BookingCustomerInput } from '@/lib/validators';
+import { useAuth } from '@/lib/providers/auth-provider';
+import type { Appointment, AppointmentStatus, Barber, Service } from '@/types';
 import { format, startOfDay, endOfDay, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -43,10 +50,25 @@ function formatTime(iso: string): string {
   return format(new Date(iso), 'HH:mm', { locale: ptBR });
 }
 
+function formatPhoneMask(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d ? `(${d}` : '';
+  if (d[2] === '9') {
+    if (d.length <= 3) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  }
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+}
+
 export default function AgendaPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | 'all'>('scheduled');
   const [dateAnchor, setDateAnchor] = useState(() => new Date());
+  const [isCreating, setIsCreating] = useState(false);
+  const [createMessage, setCreateMessage] = useState<string | null>(null);
 
   const startDate = startOfDay(dateAnchor).toISOString();
   const endDate = endOfDay(dateAnchor).toISOString();
@@ -63,6 +85,57 @@ export default function AgendaPage() {
 
   const [statusUpdateMessage, setStatusUpdateMessage] = useState<string | null>(null);
 
+  const { data: servicesData } = useQuery({
+    queryKey: ['services', 'active'],
+    queryFn: () => getServices({ active: true }),
+  });
+
+  const { data: barbersData } = useQuery({
+    queryKey: ['barbers', 'active'],
+    queryFn: () => getBarbers(true),
+  });
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<BookingCustomerInput & { serviceId: string; barberId: string; time: string }>({
+    resolver: zodResolver(bookingCustomerSchema),
+    defaultValues: {
+      customerName: '',
+      customerPhone: '',
+      serviceId: '',
+      barberId: '',
+      time: '',
+    },
+  });
+
+  const createAppointment = useMutation({
+    mutationFn: async (values: BookingCustomerInput & { serviceId: string; barberId: string; time: string }) => {
+      if (!user?.barbershopId) {
+        throw new Error('Barbearia não encontrada na sessão.');
+      }
+      const dateStr = format(dateAnchor, 'yyyy-MM-dd');
+      const startTime = new Date(`${dateStr}T${values.time}:00`).toISOString();
+      return createInternalAppointment({
+        barbershopId: user.barbershopId,
+        barberId: values.barberId,
+        serviceId: values.serviceId,
+        customerName: values.customerName,
+        customerPhone: values.customerPhone,
+        startTime,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setCreateMessage('Agendamento criado com sucesso');
+      setIsCreating(false);
+      reset();
+    },
+  });
+
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
       updateAppointmentStatus(id, status),
@@ -78,12 +151,18 @@ export default function AgendaPage() {
     return () => clearTimeout(t);
   }, [statusUpdateMessage]);
 
+  useEffect(() => {
+    if (!createMessage) return;
+    const t = setTimeout(() => setCreateMessage(null), 3000);
+    return () => clearTimeout(t);
+  }, [createMessage]);
+
   const appointments = data?.appointments ?? [];
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="border-b border-zinc-200 bg-white px-4 py-4">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2">
           <Link
             href="/dashboard"
             className="flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900"
@@ -92,11 +171,173 @@ export default function AgendaPage() {
             Voltar
           </Link>
           <h1 className="text-lg font-semibold text-zinc-900">Agenda</h1>
-          <div className="w-16" />
+          <button
+            type="button"
+            onClick={() => setIsCreating((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <PlusIcon className="h-4 w-4" aria-hidden />
+            Criar agendamento
+          </button>
         </div>
       </div>
 
       <div className="mx-auto max-w-2xl px-4 py-6">
+        {createMessage && (
+          <div
+            className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+            role="status"
+            aria-live="polite"
+          >
+            <CheckCircleIcon className="h-5 w-5 shrink-0 text-green-600" aria-hidden />
+            <span>{createMessage}</span>
+          </div>
+        )}
+
+        {isCreating && (
+          <div className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-zinc-900">Criar agendamento rápido</h2>
+            <p className="mb-4 text-xs text-zinc-500">
+              Use este formulário para registrar rapidamente um horário para um cliente que chegou na barbearia.
+            </p>
+            <form
+              onSubmit={handleSubmit((values) => createAppointment.mutate(values))}
+              className="space-y-3"
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700">Serviço</label>
+                  <select
+                    {...register('serviceId', { required: true })}
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  >
+                    <option value="">Selecione</option>
+                    {servicesData?.services.map((service: Service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.serviceId && (
+                    <p className="mt-1 text-xs text-red-600">Selecione um serviço</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700">Barbeiro</label>
+                  <select
+                    {...register('barberId', { required: true })}
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  >
+                    <option value="">Selecione</option>
+                    {barbersData?.map((barber: Barber) => (
+                      <option key={barber.id} value={barber.id}>
+                        {barber.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.barberId && (
+                    <p className="mt-1 text-xs text-red-600">Selecione um barbeiro</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700">Data</label>
+                  <input
+                    type="date"
+                    value={format(dateAnchor, 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      const value = e.target.value ? new Date(`${e.target.value}T12:00:00`) : new Date();
+                      setDateAnchor(value);
+                    }}
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 [color-scheme:light]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700">Horário</label>
+                  <input
+                    type="time"
+                    {...register('time', { required: true })}
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20 [color-scheme:light]"
+                  />
+                  {errors.time && (
+                    <p className="mt-1 text-xs text-red-600">Informe o horário</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700">Nome do cliente</label>
+                  <input
+                    type="text"
+                    {...register('customerName')}
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    placeholder="Ex: João Silva"
+                  />
+                  {errors.customerName && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.customerName.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-700">Telefone</label>
+                  <Controller
+                    control={control}
+                    name="customerPhone"
+                    render={({ field }) => (
+                      <input
+                        type="tel"
+                        {...field}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const masked = formatPhoneMask(e.target.value);
+                          field.onChange(masked);
+                        }}
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        placeholder="(11) 99999-9999"
+                      />
+                    )}
+                  />
+                  {errors.customerPhone && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.customerPhone.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {createAppointment.isError && (
+                <p className="text-xs text-red-600">
+                  {(createAppointment.error as Error)?.message ??
+                    'Não foi possível criar o agendamento.'}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreating(false);
+                    reset();
+                  }}
+                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={createAppointment.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                >
+                  {createAppointment.isPending ? 'Salvando...' : 'Salvar agendamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
         {/* Filtro de data */}
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
