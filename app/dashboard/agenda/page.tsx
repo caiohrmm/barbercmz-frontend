@@ -176,41 +176,52 @@ export default function AgendaPage() {
   const appointments = data?.appointments ?? [];
 
   return (
-    <div className="px-4 pb-6 pt-6 sm:px-6">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <div className="min-h-[100dvh] bg-zinc-50 px-3 pb-20 pt-4 sm:px-4">
+      {/* Cabeçalho compacto para mobile */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto">
           <button
             type="button"
             onClick={() => setDateAnchor((d) => subDays(d, 1))}
-            className="rounded-lg border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="shrink-0 rounded-full border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
             aria-label="Dia anterior"
           >
             <ChevronLeftIcon className="h-5 w-5" />
           </button>
-          <div className="min-w-[10rem] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900">
-            <CalendarDaysIcon className="mx-auto mb-0.5 inline h-4 w-4 text-zinc-400" />
-            {format(dateAnchor, "EEEE, d 'de' MMM", { locale: ptBR })}
+          <div className="flex min-w-0 flex-col">
+            <div className="flex items-center gap-2">
+              <div className="inline-flex min-w-[9rem] items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900">
+                <CalendarDaysIcon className="h-4 w-4 text-zinc-400" />
+                <span className="truncate">
+                  {format(dateAnchor, "EEEE, d 'de' MMM", { locale: ptBR })}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDateAnchor(new Date())}
+                className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                Hoje
+              </button>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => setDateAnchor((d) => addDays(d, 1))}
-            className="rounded-lg border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="shrink-0 rounded-full border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
             aria-label="Próximo dia"
           >
             <ChevronRightIcon className="h-5 w-5" />
           </button>
-          <button
-            type="button"
-            onClick={() => setDateAnchor(new Date())}
-            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            Hoje
-          </button>
         </div>
+      </div>
+
+      {/* Botão de criar agendamento em linha separada (mobile-first) */}
+      <div className="mb-4">
         <button
           type="button"
           onClick={() => setIsCreating((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 sm:w-auto sm:justify-start"
         >
           <PlusIcon className="h-4 w-4" aria-hidden />
           Criar agendamento
@@ -229,9 +240,9 @@ export default function AgendaPage() {
       )}
 
       {isCreating && (
-        <div className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Criar agendamento rápido</h2>
-          <p className="mb-4 text-xs text-zinc-500">
+        <div className="mb-5 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-2 text-sm font-semibold text-zinc-900">Criar agendamento rápido</h2>
+          <p className="mb-3 text-xs text-zinc-500">
             Use este formulário para registrar rapidamente um horário para um cliente que chegou na
             barbearia.
           </p>
@@ -413,7 +424,7 @@ export default function AgendaPage() {
               <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-zinc-200 bg-white py-1 shadow-lg focus:outline-none">
                 <ListboxOption
                   value="all"
-                  className="cursor-pointer px-4 py-2 data-[selected]:bg-amber-50 data-[focus]:bg-zinc-50"
+                  className="cursor-pointer px-4 py-2 text-sm text-zinc-700 data-[selected]:bg-amber-50 data-[selected]:text-amber-900 data-[focus]:bg-zinc-50"
                 >
                   Todos
                 </ListboxOption>
@@ -421,7 +432,7 @@ export default function AgendaPage() {
                   <ListboxOption
                     key={s}
                     value={s}
-                    className="cursor-pointer px-4 py-2 data-[selected]:bg-amber-50 data-[focus]:bg-zinc-50"
+                    className="cursor-pointer px-4 py-2 text-sm text-zinc-700 data-[selected]:bg-amber-50 data-[selected]:text-amber-900 data-[focus]:bg-zinc-50"
                   >
                     {STATUS_LABEL[s]}
                   </ListboxOption>
